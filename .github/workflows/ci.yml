@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (lint, types, unit tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/api
+    env:
+      UV_PYTHON: "3.12" # test the minimum supported version
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run mypy app
+      - run: uv run pytest -q
+      - name: OpenAPI contract is up to date
+        run: uv run python scripts/export_openapi.py --check
+
+  database:
+    name: Migrations + RLS (Postgres 16)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      UV_PYTHON: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply auth stub, migrations, seed
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/ci/auth_stub.sql
+          for f in supabase/migrations/*.sql; do
+            echo "→ $f"; psql -v ON_ERROR_STOP=1 -f "$f"
+          done
+          psql -v ON_ERROR_STOP=1 -f supabase/seed.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/seed.sql   # seed must be idempotent
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Integration tests
+        working-directory: services/api
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: |
+          uv sync --locked
+          uv run pytest -q -m integration

@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/* Buy Lens design tokens.
+   Given by the design: bg, ink, frame, button on/off, buy/consider/skip text + background.
+   Derived from the screenshots: muted, faint, line, subtle. */
+@theme {
+  --color-bg: #f9f8f6;
+  --color-ink: #19181d;
+  --color-frame: #ffffff;
+  --color-btn-off: #f9f8f6;
+  --color-btn-on: #19181d;
+
+  --color-buy: #7ca28d;
+  --color-buy-bg: #eaf2ec;
+  --color-consider: #976d2d;
+  --color-consider-bg: #f5eddc;
+  --color-skip: #a33e36;
+  --color-skip-bg: #f8eae7;
+
+  --color-muted: #6e6c72;
+  --color-faint: #a09ea3;
+  --color-line: #e6e3de;
+  --color-subtle: #f0eeea;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-lora), ui-serif, Georgia, serif;
+
+  --radius-card: 14px;
+}
+
+html {
+  background: var(--color-bg);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Visible focus for keyboard users on every interactive element. */
+:where(
+  a,
+  button,
+  input,
+  [role="tab"],
+  [role="radio"],
+  [role="checkbox"]
+):focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
