@@ -278,6 +278,7 @@ export const BRANDS: Brand[] = BRAND_NAMES.map((name, i) => ({
   id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`,
   name,
   slug: name
+    .replace(/['’]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, ""),

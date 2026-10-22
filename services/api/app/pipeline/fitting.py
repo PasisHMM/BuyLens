@@ -131,12 +131,14 @@ def evaluate_fit(extract: ProductExtract, size: SizeChoice | None, profile: Prof
         if dim == "inseam":
             notes.append("inseam matches" if match is FitMatch.OK else f"inseam runs {match.value}")
         elif match is FitMatch.OK and measure.basis == "garment":
-            notes.append(f"{dim} allows {_fmt_in(room)} ease")
+            notes.append(f"{DIMENSION_NOUN.get(dim, dim)} allows {_fmt_in(room)} ease")
         elif match is FitMatch.OK:
-            notes.append(f"{dim} matches the size chart")
+            notes.append(f"{DIMENSION_NOUN.get(dim, dim)} matches the size chart")
         else:
             side = "short of" if room < 0 else "over"
-            notes.append(f"{dim} likely {match.value} ({_fmt_in(abs(room))} {side} the range)")
+            notes.append(
+                f"{DIMENSION_NOUN.get(dim, dim)} likely {match.value} ({_fmt_in(abs(room))} {side} the range)"
+            )
 
     fabric = extract.attributes.get("fabric")
     if fabric:

@@ -58,7 +58,9 @@ function decisionHint(
     option.seller_risk.return_policy.verified &&
     option.seller_risk.return_policy.free;
   if (result.verdict === "SKIP")
-    return "We’d pass on this one. Check another product or compare the options above.";
+    return result.options.length > 1
+      ? "We’d pass on this one. Compare the other options above, or check another product."
+      : "We’d pass on this one. Check another product instead.";
   if (result.verdict === "BUY")
     return freeReturns
       ? "Everything checks out, and returns are free if it doesn’t work out."

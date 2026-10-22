@@ -75,7 +75,13 @@ export function Analyzer() {
   }
 
   const onComplete = useCallback(
-    (id: string) => router.push(`/checks/${id}`),
+    (id: string) => {
+      // Close the dialog first: Next keeps this page alive in the background, and a still-open
+      // dialog would replay "complete" and navigate back here when the user returns.
+      setRunId(null);
+      setUrl("");
+      router.push(`/checks/${id}`);
+    },
     [router],
   );
   const onClose = useCallback(() => setRunId(null), []);
@@ -115,7 +121,7 @@ export function Analyzer() {
         </label>
         <div
           className={cx(
-            "flex h-14 flex-1 items-center gap-3 rounded-lg border bg-frame px-4 focus-within:border-ink",
+            "flex h-12 w-full shrink-0 items-center gap-3 rounded-lg border bg-frame px-4 focus-within:border-ink sm:h-14 sm:flex-1",
             error ? "border-skip" : "border-line",
           )}
         >
@@ -135,7 +141,7 @@ export function Analyzer() {
         </div>
         <Button
           type="submit"
-          className="h-14 sm:h-[50px] sm:self-center sm:px-6"
+          className="h-12 sm:h-[50px] sm:self-center sm:px-6"
           disabled={submitting || !profile}
         >
           {submitting ? "Starting…" : "Check Product"}
@@ -217,10 +223,9 @@ export function Analyzer() {
             </p>
           </div>
           {recent.verdict && (
-            <VerdictBadge
-              verdict={recent.verdict}
-              className="hidden sm:inline-flex"
-            />
+            <span className="hidden sm:block">
+              <VerdictBadge verdict={recent.verdict} />
+            </span>
           )}
         </Link>
       )}

@@ -134,7 +134,11 @@ export function FitCheckCard({ fit, unit }: { fit: FitCheck; unit: Unit }) {
           <tr className="border-b border-line text-left text-[11px] tracking-wide text-muted uppercase">
             <th className="pb-2 font-normal">Measure</th>
             <th className="pb-2 text-right font-normal">You</th>
-            <th className="pb-2 text-right font-normal">Garment</th>
+            <th className="pb-2 text-right font-normal">
+              {fit.rows.some((r) => r.basis === "body")
+                ? "Size chart"
+                : "Garment"}
+            </th>
           </tr>
         </thead>
         <tbody>

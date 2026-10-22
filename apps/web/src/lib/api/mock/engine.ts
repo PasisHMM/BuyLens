@@ -178,10 +178,10 @@ function evaluateFit(
     else if (match === "ok")
       notes.push(
         m.basis === "garment"
-          ? `${dim} allows ${fmtIn(room)} ease`
-          : `${dim} matches the size chart`,
+          ? `${DIMENSION_NOUN[dim]} allows ${fmtIn(room)} ease`
+          : `${DIMENSION_NOUN[dim]} matches the size chart`,
       );
-    else notes.push(`${dim} likely ${match}`);
+    else notes.push(`${DIMENSION_NOUN[dim]} likely ${match}`);
   }
   notes.push(s.fabric, s.stretch ? "stretch fabric" : "no stretch");
   const missing = rows

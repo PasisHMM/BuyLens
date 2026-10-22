@@ -41,7 +41,10 @@ async def db() -> AsyncIterator[Database]:
 
 @pytest.fixture
 async def test_seller(db):
-    """A throwaway allow-listed seller on a .test domain, removed afterwards."""
+    """A throwaway allow-listed seller on a random .test domain, disabled afterwards.
+
+    Disabled rather than deleted: listings and check options created by the test still reference it.
+    """
     domain = f"brand-{uuid4().hex[:8]}.test"
     async with db.pool.acquire() as conn:
         levis = await conn.fetchval("select id from brands where slug = 'levis'")
@@ -55,7 +58,7 @@ async def test_seller(db):
         )
     yield domain
     async with db.pool.acquire() as conn:
-        await conn.execute("delete from sellers where id = $1", seller_id)
+        await conn.execute("update sellers set enabled = false where id = $1", seller_id)
 
 
 async def new_user(db: Database) -> UUID:

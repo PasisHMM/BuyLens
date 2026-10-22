@@ -177,20 +177,38 @@ export class MockApiClient implements ApiClient {
   }
 
   private async execute(id: string): Promise<void> {
+    try {
+      await this.runSteps(id);
+    } catch (err) {
+      // Never leave the loading dialog spinning: report any unexpected error as a failed check.
+      console.error("Mock check failed", err);
+      const message = "Something went wrong on our side. Please try again.";
+      const stored = this.checks()[id];
+      if (stored)
+        this.saveCheck({ ...stored, status: "failed", error: message });
+      this.emit(id, { type: "failed", message });
+    }
+  }
+
+  private async runSteps(id: string): Promise<void> {
     const check = this.checks()[id];
     const scenario = SCENARIOS[check.scenario];
     const run = this.runs.get(id)!;
-    const result = runScenario(scenario, check.profile.cm, check.profile.unit, {
-      id,
-      url: check.url,
-      createdAt: check.createdAt,
-    });
-    const best = result.options.length
-      ? Math.min(...result.options.map((o) => o.total_cents))
+    // A failing sample (e.g. "store blocks us") never reaches the verdict, like the real pipeline.
+    const result = scenario.failure
+      ? null
+      : runScenario(scenario, check.profile.cm, check.profile.unit, {
+          id,
+          url: check.url,
+          createdAt: check.createdAt,
+        });
+    const options = result?.options ?? [];
+    const best = options.length
+      ? Math.min(...options.map((o) => o.total_cents))
       : 0;
-    const n = result.options.length;
+    const n = options.length;
     const compared =
-      result.options[0]?.fit_check.rows
+      options[0]?.fit_check.rows
         .filter((r) => r.garment_cm != null)
         .map((r) => r.dimension) ?? [];
     const details: Record<StepId, string> = {
