@@ -70,7 +70,7 @@ jobs:
           uv run pytest -q -m integration
 
   web:
-    name: Web (lint, types, build)
+    name: Web (lint, types, tests, build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -85,4 +85,5 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm test
       - run: npm run build
