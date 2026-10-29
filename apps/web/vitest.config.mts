@@ -7,5 +7,12 @@ export default defineConfig({
   },
   test: {
     include: ["src/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      // Every source file counts, so untested files show as 0% instead of disappearing.
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: ["src/**/*.test.ts", "src/**/*.d.ts"],
+      reporter: ["text-summary", "lcov"],
+    },
   },
 });
