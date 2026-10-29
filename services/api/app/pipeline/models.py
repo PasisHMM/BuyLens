@@ -6,8 +6,65 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-Dimension = Literal["waist", "inseam", "hips"]
-Basis = Literal["body", "garment"]  # brand "fit to body" chart vs. measured garment
+
+# ── Measurement model (docs/glossary.md) ─────────────────────────────────────
+# Values are stored as-is in Postgres enums and lookup tables; an integration test keeps them equal.
+class Dimension(StrEnum):
+    """A body measurement. Chest and bust are one measurement: the fullest girth of the upper body."""
+
+    CHEST = "chest"
+    WAIST = "waist"
+    HIPS = "hips"
+    SHOULDERS = "shoulders"
+    INSEAM = "inseam"
+    SLEEVE = "sleeve"
+    HEIGHT = "height"
+
+
+class Basis(StrEnum):
+    """What a number measures: a person's body, or a garment laid flat."""
+
+    BODY = "body"
+    GARMENT = "garment"
+
+
+class FitMode(StrEnum):
+    """How a profile describes the user. Quick Fit sizes are approximate and never prove a mismatch."""
+
+    QUICK_FIT = "quick_fit"
+    PERSONAL_FIT = "personal_fit"
+
+
+class FitOutcome(StrEnum):
+    """Result of comparing a profile with one listing's size data."""
+
+    MATCH = "match"  # every critical measurement within tolerance
+    UNCERTAIN = "uncertain"  # data missing or insufficient; never treated as a mismatch
+    MISMATCH = "mismatch"  # a critical measurement is outside tolerance (Personal Fit only)
+
+
+class FitCategory(StrEnum):
+    """Garment groups that have agreed fit rules."""
+
+    BOTTOMS = "bottoms"  # jeans and pants
+    TOPS = "tops"
+    DRESSES = "dresses"
+    OUTERWEAR = "outerwear"
+
+
+class SizeSystem(StrEnum):
+    EU = "eu"
+    US = "us"
+
+
+class QuickSize(StrEnum):
+    XS = "XS"
+    S = "S"
+    M = "M"
+    L = "L"
+    XL = "XL"
+
+
 StepId = Literal["product", "prices", "fit", "seller"]
 STEPS: tuple[StepId, ...] = ("product", "prices", "fit", "seller")
 # Singular nouns for copy: "a hip measurement", "Hip measurement unavailable".

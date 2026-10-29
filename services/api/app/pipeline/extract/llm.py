@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from app.llm import LLM, LLMError
 from app.pipeline.extract.text import number_in_text, to_cents
-from app.pipeline.models import Measure, ProductExtract, SizeChart, SizeRow
+from app.pipeline.models import Basis, Measure, ProductExtract, SizeChart, SizeRow
 
 CM_PER_IN = 2.54
 MAX_PAGE_CHARS = 150_000  # ≈ 40k tokens
@@ -60,7 +60,7 @@ def _verified(value: float | None, text: str) -> float | None:
 def _chart(page: LLMProductPage, text: str) -> SizeChart | None:
     if page.size_chart_unit == "none" or not page.size_chart:
         return None
-    basis = "garment" if page.size_chart_basis == "garment" else "body"
+    basis = Basis.GARMENT if page.size_chart_basis == "garment" else Basis.BODY
     factor = CM_PER_IN if page.size_chart_unit == "in" else 1.0
     rows = []
     for row in page.size_chart:

@@ -73,8 +73,8 @@ def _context(table: Tag) -> str:
 def _basis(text: str) -> Basis:
     t = text.lower()
     if re.search(r"garment|product measurement|laid flat|measured flat|item measurement", t):
-        return "garment"
-    return "body"
+        return Basis.GARMENT
+    return Basis.BODY
 
 
 def _rows(table: Tag) -> list[list[str]]:

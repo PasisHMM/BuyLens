@@ -3,19 +3,17 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.pipeline.measurements import DIMENSIONS as CATALOG
+from app.pipeline.models import Dimension
 from app.units import Unit, to_cm
 
 REQUIRED_DIMENSIONS = ("waist", "inseam")
 OPTIONAL_DIMENSIONS = ("hips",)
 DIMENSIONS = REQUIRED_DIMENSIONS + OPTIONAL_DIMENSIONS
 
-# Plausible adult ranges in cm. Values outside these are almost always a unit mix-up
+# Values outside the catalog's plausible ranges are almost always a unit mix-up
 # (e.g. "66" typed while the toggle is on IN), so the error message points at the toggle.
-PLAUSIBLE_CM: dict[str, tuple[float, float]] = {
-    "waist": (45.0, 200.0),
-    "inseam": (40.0, 120.0),
-    "hips": (60.0, 200.0),
-}
+PLAUSIBLE_CM: dict[str, tuple[float, float]] = {d: CATALOG[Dimension(d)].plausible_cm for d in DIMENSIONS}
 
 MAX_BRANDS = 30
 
