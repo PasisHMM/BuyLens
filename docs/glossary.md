@@ -8,6 +8,9 @@ The domain terms used in code, the database and the UI. Code names are in `servi
 | **Chest / bust** | `Dimension.CHEST` | One measurement: the fullest girth of the upper body. Charts saying "bust" map to it. |
 | **Basis** | `Basis` · `measurement_basis` | What a number measures. **Body:** the person, or a brand's body-size chart. **Garment:** the clothing itself, laid flat or from a garment chart. Body numbers are compared with body charts, and garment numbers with garment charts. |
 | **Fit category** | `FitCategory` · `fit_category` | A garment group with agreed fit rules: bottoms (jeans and pants), tops, dresses, outerwear. Products in other categories (shorts, skirts) have no rules yet. |
+| **Product type** | `ProductType` (planned, `taxonomy.py`) | One of the 8 MVP types: skirts, shorts, sweaters, tops/cardigans, hoodies, jeans, pants, hats. Each maps to a fit category or to none. |
+| **Attribute** | planned, `taxonomy.py` | A design fact from a fixed list (e.g. sleeve length: three-quarter). It describes the item and never affects the fit outcome. |
+| **Comparable offer** | planned (Phase 4) | An offer priced in EUR. Offers in other currencies keep their own price and are labelled "Not directly comparable to EUR offers". |
 | **Critical measurement** | `CategoryRule.critical` | If it's outside tolerance, the result is a **mismatch**. If it's missing, the result is **uncertain**. |
 | **Secondary measurement** | `CategoryRule.secondary` | Checked when known. If it's off or missing, the result is **uncertain**, never a mismatch. |
 | **Tolerance** | `CategoryRule.tolerance_cm(basis)` | How far, in cm, a size may be from the user's measurement and still count as within range. Depends on category and basis. |

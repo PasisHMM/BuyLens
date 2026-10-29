@@ -1,6 +1,6 @@
 # Buy Lens Redesign Plan
 
-> **Status:** decisions locked 2026-10-29. Phase 0 and Phase 1 done. Next step: Phase 2 (awaiting review).
+> **Status:** decisions locked 2026-10-29; MVP decisions added the same day (§2.9–2.11, §5, §6c, §8). Phase 0 and Phase 1 done. Next step: Phase 2 (awaiting review).
 > **Direction:** Buy Lens is a user-controlled, evidence-based clothing shopping analysis tool. It helps people decide; it never decides for them.
 
 ---
@@ -39,7 +39,8 @@ Signed off by product; values may be tuned later from feedback. These values liv
 
 **Quick Fit (`QUICK_FIT`): XS / S / M / L / XL**
 - For first-time users. The user picks a size system (**EU or US**; we ask first) and a size per category.
-- Sizes map to approximate body ranges from standard conversion tables. Each table row records its source.
+- Sizes map to body ranges using this **source priority**: (1) the product's own size chart, (2) the brand's official size chart, (3) a documented general reference, used only as an approximate fallback. Every stored row records its source; see §6c.
+- Quick Fit is always labelled approximate. It is never treated like exact body measurements.
 - **Never returns MISMATCH.**
   - Returns **MATCH**, labelled "Approximate fit based on size M", when the store's chart covers that size.
   - Returns **UNCERTAIN** when the chart doesn't cover the size, or there's no chart.
@@ -60,8 +61,9 @@ Signed off by product; values may be tuned later from feedback. These values liv
 - **No fit percentages or probabilities anywhere.**
 
 ### 2.4 Budget
-- A single **maximum budget slider** (e.g. max €200) on the search screen. The profile holds the default.
+- A single **maximum budget in EUR** (e.g. max €200) on the search screen. The profile holds the default.
 - The total includes shipping when it is known or reliably estimated. Otherwise the app shows **"Shipping cost unverified"** and compares base prices.
+- Only EUR offers can be checked against the budget (see §2.10).
 
 ### 2.5 Secondhand
 - A **Secondhand** checkbox on the search screen.
@@ -84,6 +86,45 @@ Signed off by product; values may be tuned later from feedback. These values liv
 ### 2.8 Production data
 - `check_runs` has **0 rows** (confirmed 2026-10-29), so no stored results need migrating.
 
+### 2.9 MVP product taxonomy (controlled vocabulary)
+
+Eight product types. Each maps to one of the existing fit categories, or to none. Attributes describe the design. **An attribute never causes a MISMATCH**; only critical measurements do. A three-quarter sleeve is a design feature, not a fit problem.
+
+| Product type | Fit category (rules from §2.1) | Attribute groups (max 3) and allowed values |
+|---|---|---|
+| Jeans | Bottoms | **fit:** skinny, slim, straight, relaxed, wide, bootcut, flare, tapered, barrel, mom, boyfriend · **rise:** low, mid, high · **length:** cropped, ankle, regular, long |
+| Pants | Bottoms | **fit:** slim, straight, relaxed, wide, tapered, jogger · **rise:** low, mid, high · **length:** cropped, ankle, regular, long |
+| Sweaters | Tops | **sleeve length:** sleeveless, short, three-quarter, long · **fit:** slim, regular, relaxed, oversized · **garment length:** cropped, regular, longline |
+| Tops / cardigans | Tops | same groups as sweaters |
+| Hoodies | Tops | **fit:** slim, regular, relaxed, oversized · **garment length:** cropped, regular, longline · **closure:** pullover, full zip, half zip |
+| Skirts | **None → UNCERTAIN** | **length:** mini, knee, midi, maxi · **fit:** fitted, regular, relaxed · **shape:** A-line, pencil, straight, pleated, wrap |
+| Shorts | **None → UNCERTAIN** | **length:** short, mid-thigh, knee · **fit:** slim, regular, relaxed · **waist rise:** low, mid, high |
+| Hats | **None → UNCERTAIN** | **type:** beanie, cap, bucket, beret, fedora · **fit:** adjustable, fitted, one size · **material:** wool, cotton, acrylic, straw, synthetic |
+
+- **One place:** a new `pipeline/taxonomy.py` holds the product types, the attribute vocabulary and the type → fit-category map. It replaces `CATEGORY_KEYWORDS` in `extract/attributes.py` and `_PRODUCT_CATEGORIES` in `measurements.py`.
+- **Extraction:** keyword rules first. The AI fallback may only return values from the list (its JSON schema uses enums). Anything else is stored as "not stated", never as a free tag.
+- **No new fit engine per type.** Types without approved rules return UNCERTAIN with the reason "No fit rules for this product type yet".
+- **Dresses and outerwear** keep their rules in `measurements.py` but are not MVP product types. A product detected as one shows "Not supported in the MVP" (fit UNCERTAIN).
+- **Extensible:** adding a type is one row in the map plus its vocabulary; it gets fit rules only after product approves them.
+
+### 2.10 EU-first currency
+- The MVP targets the EU. Prices are shown in **EUR, exactly as the retailer's EUR storefront offers them**.
+- **No automatic currency conversion.**
+- A listing in another currency keeps its **original price and currency**. It is labelled **"Not directly comparable to EUR offers"** and left out of budget and price comparisons.
+- An **unknown currency is "unknown"**, never assumed. Today the code silently assumes USD (§6c).
+- Shipping and total-cost availability are always shown: known, estimated from a verified store rule, or **"Shipping cost unverified"**.
+
+### 2.11 Homepage (first page)
+One short form, no extra pages or buttons per feature:
+1. **Product link**
+2. **Quick Fit / Personal Fit** switch
+3. Quick Fit: **S / M / L** chips (XS and XL behind "More sizes"). Personal Fit: a one-line summary of the saved measurements with an "Edit" link.
+4. **Maximum budget (€)**
+5. **Include secondhand** checkbox
+6. **Analyze product**
+
+First-time users can analyze with Quick Fit straight away; the current forced redirect to `/preferences` goes. Existing styling and primitives are kept. **No payment or subscription UI.**
+
 ---
 
 ## 3. Target architecture
@@ -93,6 +134,7 @@ backend (Python): the only place rules live
   1 Extraction     KEEP     fetch · JSON-LD · Shopify · size chart · AI fallback
   2 Sourcing       MODIFY   retail search + user-pasted secondhand links
   3 Measurements   NEW      catalog · categories · critical / secondary · tolerances · size references
+                            + product types and attribute vocabulary (taxonomy.py)
   4 Fit analysis   REPLACE  MATCH / UNCERTAIN / MISMATCH + reasons (pure, deterministic)
   5 Price          MODIFY   total cost incl. shipping · budget flag · "shipping unverified"
   6 Reliability    REPLACE  evidence → rubric → Green / Yellow / Red / Not enough data
@@ -147,15 +189,23 @@ Every unit follows the same rules:
 |---|---|---|---|
 | **0 Stabilise** ✅ | Worker allow-list race; Vitest + first web tests; CRAP baseline with coverage | Concurrent refresh keeps hosts allowed; formatting; mock-client storage | Done: see §6 |
 | **1 Measurement model** ✅ | `pipeline/measurements.py` (table in §2.1, size references with sources), fit-mode / outcome / basis enums, Migration A (profile part), `docs/glossary.md` | Critical and secondary sets per category; tolerance by chart basis; unknown dimension/category rejected where data enters; every size reference has a source | Only one definition of the catalog exists |
-| **2 Profiles** | Quick Fit and Personal Fit API and form, `GET /v1/measurements`; the web form reads the catalog (removes the duplicated `PLAUSIBLE_CM`) | Quick Fit valid with sizes only; Personal Fit requires critical measurements; switching keeps checks and feedback; old bodies accepted | A first-time user can run a check with "M" only |
-| **3 Fit analysis v2** | `fitting.py` replaced (size choice and length variants reused), `sizechart.py` aliases (pin current behaviour, then split `parse_table`) | Jeans MATCH / UNCERTAIN (hips missing) / MISMATCH (waist); body vs garment tolerance; Quick Fit never MISMATCH; stretch only with fabric content; inseam missing → UNCERTAIN, never MISMATCH | Deterministic; no percentages |
-| **4 Remove verdicts** | `ranking.py`; delete `rules.decide` and `narrate.py`; new results contract; results screen (match / uncertain / hidden note); delete `mock/engine.ts`; fixtures from Python; `live.ts` duplicate; check data where it enters the web app; idempotency key | MATCH ranks above a cheaper UNCERTAIN option; mismatches counted and hidden; no `verdict` key; malformed responses rejected; double submit makes one check | No BUY / CONSIDER / SKIP in active code; dryer clean |
-| **5 Reliability + evidence** | `reliability.py`, `evidence_summary.py` | Fewer than 5 reviews → Not enough data; fixed tags → expected band; tag with an unverifiable quote dropped; no percentages | Every input and source is visible |
-| **6 Budget + secondhand** | Slider and checkbox; total including shipping; "Shipping cost unverified"; condition parsing; pasted Vinted link (after access check) | Over-budget flag; secondhand excluded unless ticked; unknown shipping compares base price with a warning | Retail and secondhand options in one list |
+| **2 Profiles + homepage form** | **Backend:** `PUT /v1/profile` accepts mode, size system, quick sizes and measurements with basis (old bodies still accepted); `GET /v1/measurements`; mutation boundary tests for `measurements.py` (§6c). **Web:** homepage switch Quick / Personal and S/M/L chips (§2.11); no forced redirect; `MeasurementsForm` reads the catalog (removes the duplicated `PLAUSIBLE_CM`); header pill shows the mode; component-test setup | Quick Fit valid with a size only; Personal Fit requires the critical measurements; switching keeps measurements, checks and feedback; old bodies accepted; first visit can analyze without `/preferences` | A first-time user can run a check with "M" only. **Not in Phase 2:** taxonomy, budget, results screen, currency |
+| **3 Fit analysis v2 + product types** | `fitting.py` replaced (size choice and length variants reused); `sizechart.py` aliases (pin current behaviour, then split `parse_table`); `taxonomy.py` **product types and type → fit category only** (§2.9); `size_references` gains brand, source URL, retrieval date and source kind, plus EU and W/L labels; first curated brand charts (§6c) | Jeans MATCH / UNCERTAIN (hips missing) / MISMATCH (waist); body vs garment tolerance; Quick Fit never MISMATCH; stretch only with fabric content; inseam missing → UNCERTAIN; skirts, shorts and hats → UNCERTAIN with a reason; product chart beats brand chart beats generic | Deterministic; no percentages; every reference row has a source |
+| **4 Results without verdicts + EUR + budget** | `ranking.py`; delete `rules.decide` and `narrate.py`; new results contract; results screen (match / uncertain / hidden note); **currency fix** (unknown ≠ USD; "not directly comparable to EUR"; EUR formatting); **budget in €** on the homepage and in ranking; delete `mock/engine.ts`; fixtures from Python; EU seller set for fixtures; `live.ts` duplicate; check responses where they enter the web app; idempotency key | MATCH ranks above a cheaper UNCERTAIN option; mismatches counted and hidden; no `verdict` key; missing currency stays unknown; a USD listing is labelled and left out of the budget check; over-budget flag; malformed responses rejected; double submit makes one check | No BUY / CONSIDER / SKIP in active code; dryer clean |
+| **5 Reliability + evidence + attributes** | `reliability.py`, `evidence_summary.py`; attribute extraction with the controlled vocabulary (§2.9), shown as plain facts | Fewer than 5 reviews → Not enough data; fixed tags → expected band; tag with an unverifiable quote dropped; attribute outside the vocabulary → "not stated"; an attribute never changes the fit result | Every input and source is visible |
+| **6 Secondhand** | Homepage checkbox; condition parsing; pasted Vinted link (after access check) | Secondhand excluded unless ticked; the pasted listing's price, shipping and currency follow §2.10 | Retail and secondhand options in one list |
 | **7 Feedback on the server** | Feedback endpoint, `fit_memory` adjustment shown to the user | Saving twice changes nothing; adjustment capped; feedback survives a mode switch | Feedback is no longer browser-only |
 | **8 Clean-up** | Migration B, docs, methodology page, final quality report | Migration and RLS tests | No verdict code or columns left |
 
-**Estimate:** about 6–8 weeks for one developer. The smallest usable version (Phases 1–4: jeans, the pasted link, budget flag) takes about 4 weeks.
+**Moved:** the budget moves from Phase 6 to Phase 4, because ranking sorts by "within budget" and the homepage needs the field. The currency fix lands in Phase 4 with the new price output.
+
+**Essential for a working MVP:** Phases 2–4 (Quick/Personal Fit, fit results for jeans, pants and tops, EUR prices, budget, no verdicts), plus the reliability band from Phase 5.
+**Valuable but deferrable inside the MVP:** attributes (Phase 5), secondhand (Phase 6), server-side feedback (Phase 7).
+**Intentionally postponed (not in the MVP):** currency conversion; W/L chips in Quick Fit (W/L is supported where a product or brand chart gives it); fit rules for skirts, shorts and hats (head circumference); dresses and outerwear as product types; automated secondhand search; payment and subscription UI; free-form AI tags; raising coverage of old frontend code that is about to be replaced.
+
+**Frontend testing rule:** new and changed components get behaviour tests; old code is not back-filled. `npm run lint`, `typecheck`, `test` and `build` pass after every unit.
+
+**Estimate:** about 6–8 weeks for one developer. The smallest usable version (Phases 2–4) takes about 4 weeks.
 
 ---
 
@@ -181,13 +231,84 @@ Every unit follows the same rules:
 | Tests | 46 unit tests and 10 integration tests. Totals: 193 unit and 20 integration tests pass. |
 | Quality | Crapper: new functions 100% covered, CRAP ≤ 6. Dryer clean. Mutator blocked on Windows. Web coverage: 8.6% of statements across all files (honest baseline). |
 
+## 6c. Pre-Phase 2 verification (2026-10-29)
+
+**Mutator: works now.** With Developer Mode on, Python creates file and folder symlinks. The run used a scratch copy of `measurements.py` with its 46 unit tests only (the full suite was not run): **17 sites, 10 killed, 7 survived, 0 uncovered; 16 s.** Every survivor is a boundary mutant (`<=` → `<`, `0` → `1`), meaning no test checks a value exactly on a limit:
+- `is_plausible` at exactly the low and high limit
+- `SizeReference.covers` at exactly `min_cm` and `max_cm`
+- a tolerance of exactly 0
+- `min_cm == max_cm`
+
+These tests are added at the start of Phase 2. `covers` needs a product decision first: is a value exactly on the line between M and L in both sizes?
+
+**Size reference sources: feasibility.**
+
+| Priority | Source | Feasibility | Notes |
+|---|---|---|---|
+| 1 | Product's own chart | **Works today** | `extract/sizechart.py` already reads it at check time, and the chart type (body or garment) is recorded |
+| 2 | Brand chart: Levi's (levi.com/DE) | **Readable** | Body measurements in cm, plain HTML. Women's: jean sizes 24–34 with waist and hip, alpha XXS–XXL mapped to jean sizes, inseam by height. Example row: jean 26 → waist 69 cm, hip 91.5 cm. |
+| 2 | Brand chart: H&M | **Blocked** for automated reads (HTTP 403) | Would need manual entry from a browser |
+| 2 | Brand chart: Mango | **Rate-limited** (HTTP 429) | Manual entry only |
+| 2 | Brand charts: Zara, Uniqlo | **Per product and script-rendered** | Uniqlo says its garments vary by about 1 cm and points to each product's chart. Better handled as priority 1. |
+| 3 | EN 13402-3 (official EU standard) | **Paywalled** (CEN/BSI/DIN) | Would be the clean generic fallback |
+| 3 | Free aggregator sites (size.ly, size-charts.com, sizechartbase) | **Not acceptable** as a source | Copies of brand charts with no stated origin, and they disagree with each other |
+
+**Recommendation:**
+- **Rely on priority 1** (product charts, already working) for both modes.
+- **Curate brand charts by hand** for a small set of EU brands, starting with Levi's. Each row stores the source URL, retrieval date and chart type.
+- **Leave the generic fallback empty** until EN 13402-3 is bought. Without a product or brand chart, Quick Fit returns UNCERTAIN.
+- **Schema:** this needs extra `size_references` columns (brand, source URL, retrieved date, source kind) and size labels beyond XS–XL (EU numbers, W/L). Planned for Phase 3.
+- **Legal:** brand chart values are factual measurements, but copying whole tables should get a terms-of-use check per brand before storing many.
+
+**Currency: current code.**
+
+| Finding | Where | Problem against §2.10 |
+|---|---|---|
+| Missing currency becomes `"USD"` | `extract/jsonld.py:132`, `models.py:107` (`currency = "USD"`), DB `listings.currency default 'USD'` | Silently assumes a currency |
+| Comparison uses the source listing's currency; other currencies get no delta | `pricing.py:39–45` | Correct: no conversion. But there's no "not comparable to EUR" label and the base isn't EUR. |
+| Headline money is hard-coded `$` | `narrate.py:45` | Wrong for EUR. The file is deleted in Phase 4 anyway. |
+| Web formats with `en-US` and a USD default | `format.ts:34–37`, `Analyzer.tsx:221`, `mock/engine.ts:210` | Needs an EUR default and an EU locale |
+| Unknown shipping stays unknown; total is flagged as an estimate | `pricing.py:10–19`, `PriceCheck.total_is_estimate` | Already right; the UI needs the "Shipping cost unverified" wording |
+| Price card shows "x.x% less/more" than market | `cards.tsx:103` | The no-percentages rule covers fit and reliability. Decide whether price keeps a percentage. |
+| Seeded sellers are US storefronts (levi.com, everlane.com, madewell.com, agolde.com, nordstrom.com) | `supabase/seed.sql` | An EU-first MVP needs EU storefronts |
+
 ## 7. Open items
 
-1. **Mutator on Windows:** turn on Windows Developer Mode (Settings → System → For developers) or run mutation tests on Linux.
+1. ~~Mutator on Windows~~: **solved** by Developer Mode (§6c).
 2. **Vinted access:** confirm their terms allow reading a single user-submitted page, and check whether pages can be fetched without a browser. Needed before Phase 6.
-3. **Currency:** the budget is in € while current stores price in USD. Do we convert currencies, or only compare options in the same currency?
-4. **Size reference values:** the official EN 13402-3 tables are paywalled (CEN/BSI/DIN), and the free tables found are secondary or brand-specific. Choose the source: buy the standard, or approve specific brand charts. `size_references` stays empty until then, so Quick Fit can only return UNCERTAIN.
-5. **Quick sizes for bottoms:** jeans are usually sized W/L or EU numbers, not XS–XL. Should Quick Fit accept those for bottoms?
+3. ~~Currency~~: **decided**, EU-first with no conversion (§2.10).
+4. **Size reference values:** decided to use product → brand → generic (§2.2). Still open: buy EN 13402-3 for the generic fallback? Which EU brands get curated charts first? Brand terms-of-use check.
+5. **Quick sizes for bottoms:** decided. S/M/L on the homepage. W/L and EU numbers are used where product or brand charts give them. W/L chips are postponed.
 6. **Body and garment value for the same measurement:** `fit_measurements` keeps the primary key (user_id, dimension), so one value per measurement for now. Allowing both changes the key in Phase 2.
 7. **Database name for the fit outcome:** `fit_outcome` already names the feedback enum (too tight / fits well / too loose). The analysis result will get a different database type name in Phase 3/4; see docs/glossary.md.
-8. **Shorts and skirts:** add rules, or keep them unsupported?
+8. ~~Shorts and skirts~~: **decided**, UNCERTAIN until rules are approved (§2.9).
+9. **EU seller set:** which EU storefronts replace or join the US seed sellers (needed for Phase 4 fixtures)?
+10. **One homepage size, several categories:** the homepage asks for one S/M/L, but quick sizes are stored per fit category. Proposal: save the chosen size for the product's detected category, and pre-fill it next time.
+11. **A value exactly on a size boundary:** does it count for both sizes (current code) or only one?
+12. **Price percentage:** keep "x.x% less than market" on the price card, or show only amounts?
+13. **Web test and validation tooling:** component tests need `@testing-library/react` and `jsdom` (new dev dependencies). Checking API responses needs either a schema library (e.g. zod, a new runtime dependency) or hand-written type guards.
+
+---
+
+## 8. Frontend component map (verified 2026-10-29)
+
+Rules stay in Python; every component only displays what the API returns. "Phase" is when the change lands.
+
+| Component | Responsibility today | Decision | Required changes | Depends on | Tests to add | Phase |
+|---|---|---|---|---|---|---|
+| `analyzer/Analyzer.tsx` (243 lines, CRAP 812) | Home page: link form, sample links, profile summary, latest check; redirects first-time users to `/preferences` | **MODIFY** (split) | Move the form into a new `CheckForm` (link, mode switch, S/M/L, budget €, secondhand). Remove the forced redirect. Profile summary handles Quick Fit. Latest check shows the fit result, not `VerdictBadge`. | `useApp`, `ProgressDialog`, `api.createCheck`, `format.ts` | Empty link error; Quick Fit submit works with no saved profile; mode switch shows or hides size chips; payload sent | 2 (mode, size, redirect), 4 (budget, latest check), 6 (secondhand) |
+| `preferences/MeasurementsForm.tsx` (289) | Personal measurements form: waist, inseam, hips; unit toggle; brands; own `PLAUSIBLE_CM` copy | **MODIFY** | Fields come from `GET /v1/measurements` grouped by category, with critical ones marked. Body/garment switch and garment note. Remove `PLAUSIBLE_CM` (the server validates; hints come from the catalog). | catalog endpoint, `BrandChips`, `format.ts` | Critical fields required; cm/in conversion; fields rendered from the catalog; server error shown; switching mode keeps values | 2 |
+| `preferences/BrandChips.tsx` (152) | Brand preference chips with search | **KEEP** | None. Later it can point to curated brand charts. | `api.searchBrands` | Only if touched | — |
+| `analyzer/ProgressDialog.tsx` (221, CRAP 506) | Four-step progress over SSE, cancel and close | **KEEP** (copy tweak) | Step text "seller" → "Seller reliability". The step contract stays. | `api.subscribe`, `StepId` | Events → done; failure shows message; cancel calls `cancelCheck` | 4 |
+| `results/CheckResultView.tsx` (390, CRAP 1056) | Verdict page: verdict scale, headline, why-not, options, feedback | **REPLACE** | New `ResultsView`: MATCH section, UNCERTAIN section, "N options hidden due to critical measurement mismatches [View]", `fit_mode_used` label. No verdict or headline. | new results contract, `cards.tsx`, `FeedbackDialog` | Group order; hidden count and expand; empty states; malformed response shows an error | 4 |
+| `results/cards.tsx` (295) | Price, fit and seller-risk cards | **MODIFY** | Price: EUR, "Shipping cost unverified", "Not directly comparable to EUR offers", over-budget flag. Fit: one row per measurement (MATCH / UNCERTAIN / MISMATCH plus reason; "Approximate fit based on size M"), no %. Seller risk → `ReliabilityCard` (Green / Yellow / Red / Not enough data, inputs and sources). | `PriceCheck`, new fit and reliability schemas | Each card in each state, including missing data | 4 (price, fit), 5 (reliability) |
+| `results/FeedbackDialog.tsx` (251) | Post-purchase feedback: fit or held-back reasons | **MODIFY** | Remove "verdict" wording now; save on the server later. | `api.submitFeedback` | Bought → fit options; not bought → reasons; payload | 4 (wording), 7 (server) |
+| `layout/SiteHeader.tsx` (77) | Header and profile pill (`W26/L30`) | **MODIFY** (small) | Pill shows "Quick Fit · M" or "Personal Fit" via `format.profilePill`. | `useApp`, `format.ts` | Pill text per mode (in `format.test.ts`) | 2 |
+| `lib/api/live.ts` (149) | Real API client: Supabase anonymous session, REST, SSE | **MODIFY** | Phase 2: new profile body. Phase 4: check request body (budget, secondhand) and `Idempotency-Key`, response checking where data enters, one 404 → null helper (removes the dryer duplicate). Phase 7: feedback endpoint. | `types.ts` (generated) | Mocked fetch: 404 → null; error detail; idempotency header; malformed response rejected | 2, 4, 7 |
+| `lib/api/mock/engine.ts` (468) | Second copy of the verdict rules in TypeScript | **REMOVE** | Replaced by Python-generated fixtures. | — | Fixture-loading test in the mock client | 4 |
+| `ui/primitives.tsx` (165) | Button, Card, Callout, `VERDICT_STYLE`, `VerdictBadge` | **MODIFY** | Remove the verdict styles and badge; add outcome and band badges. | `globals.css` tokens | Badge label per value | 4 |
+| `lib/api/types.ts`, `schema.d.ts` | API types | **MODIFY** (regenerate) | Drop `Verdict`; regenerate from the contract. | `openapi.json` | Types only (`tsc`) | 2, 4 |
+| `lib/format.ts` | Units, money, pill | **MODIFY** | EUR default and EU locale; mode-aware pill. | — | Extend `format.test.ts` | 2 (pill), 4 (money) |
+| `lib/api/mock/client.ts`, `mock/scenarios.ts` | Prototype client (browser storage `bl:*`) and samples | **MODIFY** / **REPLACE** | Read fixtures; `bl:v2:*` keys with old profiles converted to Personal Fit. | fixtures | Existing 18 tests updated; conversion test | 2 (profile), 4 (fixtures) |
+| `analyzer/CheckForm.tsx` | — | **NEW** | The homepage form (§2.11). Keeps `Analyzer` small. | primitives | See Analyzer | 2 |
+| `results/ResultsView.tsx`, `HiddenMismatchNote`, `ReliabilityCard` | — | **NEW** | See above | results contract | See above | 4, 5 |
