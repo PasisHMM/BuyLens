@@ -1,6 +1,6 @@
 # Buy Lens Redesign Plan
 
-> **Status:** decisions locked 2026-10-29. Phase 0 done (commits `bcdca70`, `349315b`). Next step: Phase 1.
+> **Status:** decisions locked 2026-10-29. Phase 0 and Phase 1 done. Next step: Phase 2 (awaiting review).
 > **Direction:** Buy Lens is a user-controlled, evidence-based clothing shopping analysis tool. It helps people decide; it never decides for them.
 
 ---
@@ -26,17 +26,18 @@ What stays: extraction, fetching, the AI provider layer, sign-in and database ac
 | Category | Critical (outside tolerance → MISMATCH) | Secondary (missing or off → UNCERTAIN only) | Tolerance |
 |---|---|---|---|
 | Jeans / pants | Waist, hips | Inseam | ±2 cm against a body chart, ±1 cm against a garment chart |
-| Tops / T-shirts / sweaters | Waist, shoulders | Chest / bust | ±2 cm |
+| Tops / T-shirts / sweaters | Chest / bust, shoulders | Waist | ±2 cm |
 | Dresses | Bust, waist, hips | None | ±2 cm |
 | Outerwear / coats | Chest, shoulders | None | ±3 cm (room for layers) |
 
 Signed off by product; values may be tuned later from feedback. These values live in **one table** in `pipeline/measurements.py`.
 
-> **Note:** for tops, chest is secondary and waist is critical. This is as decided. Most size charts key tops on chest, so many top checks may end up UNCERTAIN (no waist in the chart). We'll review this after the first real checks.
+> **Note:** Tops were corrected on 2026-10-29: chest/bust and shoulders are critical, waist is secondary.
+> Shorts and skirts have no agreed rules yet, so they get no fit rules (fit result UNCERTAIN).
 
 ### 2.2 Profile modes
 
-**Quick Fit (S/M/L)**
+**Quick Fit (`QUICK_FIT`): XS / S / M / L / XL**
 - For first-time users. The user picks a size system (**EU or US**; we ask first) and a size per category.
 - Sizes map to approximate body ranges from standard conversion tables. Each table row records its source.
 - **Never returns MISMATCH.**
@@ -110,7 +111,7 @@ web (TypeScript): display only. Prototype reads backend-generated fixtures.
 
 | Table | Change |
 |---|---|
-| `profiles` | Add `fit_mode` (`quick` / `personal`), `size_system` (`eu` / `us`), `budget_max_cents`, `budget_currency`, `include_secondhand` |
+| `profiles` | Add `fit_mode` (`quick_fit` / `personal_fit`) and `size_system` (`eu` / `us`) ✅ Phase 1; `budget_max_cents`, `budget_currency`, `include_secondhand` in Phase 6 |
 | `quick_sizes` (new) | `(user_id, category, size_label)` |
 | `size_references` (new, seeded) | `(system, category, size_label, dimension, min_cm, max_cm, source)` |
 | `fit_measurements` | Add `basis` (`body` / `garment`) and `garment_note`; dimension must be in the catalog |
@@ -145,7 +146,7 @@ Every unit follows the same rules:
 | Phase | Scope | Tests to write first | Done when |
 |---|---|---|---|
 | **0 Stabilise** ✅ | Worker allow-list race; Vitest + first web tests; CRAP baseline with coverage | Concurrent refresh keeps hosts allowed; formatting; mock-client storage | Done: see §6 |
-| **1 Measurement model** | `pipeline/measurements.py` (table in §2.1, size references with sources), fit-mode / outcome / basis enums, Migration A (profile part), `docs/glossary.md` | Critical and secondary sets per category; tolerance by chart basis; unknown dimension/category rejected where data enters; every size reference has a source | Only one definition of the catalog exists |
+| **1 Measurement model** ✅ | `pipeline/measurements.py` (table in §2.1, size references with sources), fit-mode / outcome / basis enums, Migration A (profile part), `docs/glossary.md` | Critical and secondary sets per category; tolerance by chart basis; unknown dimension/category rejected where data enters; every size reference has a source | Only one definition of the catalog exists |
 | **2 Profiles** | Quick Fit and Personal Fit API and form, `GET /v1/measurements`; the web form reads the catalog (removes the duplicated `PLAUSIBLE_CM`) | Quick Fit valid with sizes only; Personal Fit requires critical measurements; switching keeps checks and feedback; old bodies accepted | A first-time user can run a check with "M" only |
 | **3 Fit analysis v2** | `fitting.py` replaced (size choice and length variants reused), `sizechart.py` aliases (pin current behaviour, then split `parse_table`) | Jeans MATCH / UNCERTAIN (hips missing) / MISMATCH (waist); body vs garment tolerance; Quick Fit never MISMATCH; stretch only with fabric content; inseam missing → UNCERTAIN, never MISMATCH | Deterministic; no percentages |
 | **4 Remove verdicts** | `ranking.py`; delete `rules.decide` and `narrate.py`; new results contract; results screen (match / uncertain / hidden note); delete `mock/engine.ts`; fixtures from Python; `live.ts` duplicate; check data where it enters the web app; idempotency key | MATCH ranks above a cheaper UNCERTAIN option; mismatches counted and hidden; no `verdict` key; malformed responses rejected; double submit makes one check | No BUY / CONSIDER / SKIP in active code; dryer clean |
@@ -170,10 +171,23 @@ Every unit follows the same rules:
 
 ---
 
+## 6b. Phase 1 results
+
+| Item | Result |
+|---|---|
+| Catalog and rules | `pipeline/measurements.py`: 7 measurements with plausible ranges and aliases, rules for 4 categories, parsing that rejects unknown input, `SizeReference` that requires a source (no values yet) |
+| Enums | `models.py`: `Dimension`, `Basis`, `FitMode` (QUICK_FIT / PERSONAL_FIT), `FitOutcome`, `FitCategory`, `SizeSystem`, `QuickSize` |
+| Migration | `20261029000000_measurement_model.sql` (additive) and `supabase/rollback/…down.sql`. Checked on local Postgres 16: a legacy profile is kept as personal_fit/body; rollback guard, down, re-up and a double seed all pass. **Not applied to Supabase.** |
+| Tests | 46 unit tests and 10 integration tests. Totals: 193 unit and 20 integration tests pass. |
+| Quality | Crapper: new functions 100% covered, CRAP ≤ 6. Dryer clean. Mutator blocked on Windows. Web coverage: 8.6% of statements across all files (honest baseline). |
+
 ## 7. Open items
 
 1. **Mutator on Windows:** turn on Windows Developer Mode (Settings → System → For developers) or run mutation tests on Linux.
 2. **Vinted access:** confirm their terms allow reading a single user-submitted page, and check whether pages can be fetched without a browser. Needed before Phase 6.
 3. **Currency:** the budget is in € while current stores price in USD. Do we convert currencies, or only compare options in the same currency?
-4. **Tops critical measurements:** confirm waist + shoulders after the first real checks (see §2.1 note).
-5. **Web coverage for crapper:** needs `@vitest/coverage-v8` (a new dev dependency, not yet approved).
+4. **Size reference values:** the official EN 13402-3 tables are paywalled (CEN/BSI/DIN), and the free tables found are secondary or brand-specific. Choose the source: buy the standard, or approve specific brand charts. `size_references` stays empty until then, so Quick Fit can only return UNCERTAIN.
+5. **Quick sizes for bottoms:** jeans are usually sized W/L or EU numbers, not XS–XL. Should Quick Fit accept those for bottoms?
+6. **Body and garment value for the same measurement:** `fit_measurements` keeps the primary key (user_id, dimension), so one value per measurement for now. Allowing both changes the key in Phase 2.
+7. **Database name for the fit outcome:** `fit_outcome` already names the feedback enum (too tight / fits well / too loose). The analysis result will get a different database type name in Phase 3/4; see docs/glossary.md.
+8. **Shorts and skirts:** add rules, or keep them unsupported?
