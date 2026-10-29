@@ -5,6 +5,7 @@ uv run arq app.worker.WorkerSettings
 
 import asyncio
 import logging
+from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 
@@ -26,6 +27,13 @@ log = logging.getLogger(__name__)
 TIMEOUT_MESSAGE = "This check took too long. Please try again."
 
 
+def host_checker(allowed: set[str]) -> Callable[[str], bool]:
+    def host_allowed(host: str) -> bool:
+        return any(domain_matches(host, d) for d in allowed)
+
+    return host_allowed
+
+
 async def startup(ctx: dict[str, Any]) -> None:
     settings = get_settings()
     configure_logging(settings.log_level)
@@ -34,9 +42,7 @@ async def startup(ctx: dict[str, Any]) -> None:
     store = PgCheckStore(db)
     # The fetcher may only reach enabled sellers; refreshed from the DB at the start of each job.
     allowed: set[str] = {s.domain for s in await store.sellers()}
-
-    def host_allowed(host: str) -> bool:
-        return any(domain_matches(host, d) for d in allowed)
+    host_allowed = host_checker(allowed)
 
     ctx.update(
         db=db,
@@ -61,8 +67,10 @@ async def shutdown(ctx: dict[str, Any]) -> None:
 
 async def run_check_job(ctx: dict[str, Any], run_id: str) -> None:
     deps: PipelineDeps = ctx["deps"]
+    # Load before touching the shared set: other jobs read it while this one awaits the DB.
+    domains = {s.domain for s in await deps.store.sellers()}
     ctx["allowed"].clear()
-    ctx["allowed"].update(s.domain for s in await deps.store.sellers())
+    ctx["allowed"].update(domains)
     try:
         await run_check(deps, UUID(run_id))
     except asyncio.CancelledError:
