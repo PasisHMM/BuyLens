@@ -122,6 +122,12 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    /**
+     * Basis
+     * @description What a number measures: a person's body, or a garment laid flat.
+     * @enum {string}
+     */
+    Basis: "body" | "garment";
     /** Brand */
     Brand: {
       /**
@@ -251,8 +257,7 @@ export interface components {
     FitMatch: "ok" | "tight" | "loose" | "short" | "long" | "missing";
     /** FitRow */
     FitRow: {
-      /** Basis */
-      basis: ("body" | "garment") | null;
+      basis: components["schemas"]["Basis"] | null;
       /** Dimension */
       dimension: string;
       /** Garment Cm */

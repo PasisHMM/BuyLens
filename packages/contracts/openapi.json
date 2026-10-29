@@ -1,6 +1,15 @@
 {
   "components": {
     "schemas": {
+      "Basis": {
+        "description": "What a number measures: a person's body, or a garment laid flat.",
+        "enum": [
+          "body",
+          "garment"
+        ],
+        "title": "Basis",
+        "type": "string"
+      },
       "Brand": {
         "properties": {
           "id": {
@@ -403,17 +412,12 @@
           "basis": {
             "anyOf": [
               {
-                "enum": [
-                  "body",
-                  "garment"
-                ],
-                "type": "string"
+                "$ref": "#/components/schemas/Basis"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Basis"
+            ]
           },
           "dimension": {
             "title": "Dimension",
