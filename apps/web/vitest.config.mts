@@ -6,12 +6,13 @@ export default defineConfig({
     alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
   },
   test: {
-    include: ["src/**/*.test.ts"],
+    // Component tests opt into a browser with `// @vitest-environment jsdom`.
+    include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
       // Every source file counts, so untested files show as 0% instead of disappearing.
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/**/*.test.ts", "src/**/*.d.ts"],
+      exclude: ["src/**/*.test.{ts,tsx}", "src/**/*.d.ts"],
       reporter: ["text-summary", "lcov"],
     },
   },
