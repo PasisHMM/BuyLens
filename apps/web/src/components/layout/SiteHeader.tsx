@@ -22,7 +22,7 @@ function Logo({ sample = false }: { sample?: boolean }) {
   return (
     <Link
       href="/"
-      className="flex items-center gap-3"
+      className="flex shrink-0 items-center gap-2 whitespace-nowrap sm:gap-3"
       aria-label="Buy Lens home"
     >
       <ScanEye className="size-7 sm:size-8" strokeWidth={1.5} aria-hidden />
@@ -55,19 +55,17 @@ export function SiteHeader() {
           {profileLoaded && (
             <Link
               href="/preferences"
-              className="inline-flex h-9 items-center gap-2 rounded-full border border-line bg-frame px-4 text-sm font-semibold"
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-line bg-frame px-3 text-xs font-semibold whitespace-nowrap sm:px-4 sm:text-sm"
               aria-label={
-                profile ? "Edit your measurements" : "Add your measurements"
+                profile ? "Edit your fit" : "Add your fit"
               }
             >
               <Ruler
-                className="size-4 -rotate-45"
+                className="hidden size-4 -rotate-45 sm:block"
                 strokeWidth={1.75}
                 aria-hidden
               />
-              <span className="num">
-                {profilePill(profile?.waist, profile?.inseam)}
-              </span>
+              <span className="num">{profilePill(profile)}</span>
             </Link>
           )}
         </div>

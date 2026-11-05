@@ -66,13 +66,26 @@ describe("joinList", () => {
 });
 
 describe("profilePill", () => {
-  it("asks for measurements when waist is missing", () => {
-    expect(profilePill(null, 30)).toBe("Add your fit");
+  it("asks for a fit when there is no profile", () => {
+    expect(profilePill(null)).toBe("Add your fit");
   });
 
-  it("shows waist alone or waist and length", () => {
-    expect(profilePill(26, null)).toBe("W26");
-    expect(profilePill(26.5, 30)).toBe("W26.5/L30");
+  it("names the mode and each category's size", () => {
+    expect(
+      profilePill({
+        fit_mode: "quick_fit",
+        quick_sizes: { tops: "S", bottoms: "M" },
+      }),
+    ).toBe("Quick Fit · Tops S · Bottoms M");
+    expect(
+      profilePill({ fit_mode: "quick_fit", quick_sizes: { bottoms: "L" } }),
+    ).toBe("Quick Fit · Bottoms L");
+  });
+
+  it("shows only the mode for Personal Fit", () => {
+    expect(profilePill({ fit_mode: "personal_fit", quick_sizes: {} })).toBe(
+      "Personal Fit",
+    );
   });
 });
 

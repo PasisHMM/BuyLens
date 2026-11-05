@@ -1,4 +1,4 @@
-import type { Unit } from "./api/types";
+import type { Profile, Unit } from "./api/types";
 
 export const CM_PER_IN = 2.54;
 
@@ -59,15 +59,20 @@ export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/** "W26/L30" for the header pill, from a profile in its own unit. */
+/** The header pill: "Quick Fit · Tops S · Bottoms M", "Personal Fit" or "Add your fit". */
 export function profilePill(
-  waist: number | null | undefined,
-  inseam: number | null | undefined,
+  profile: Pick<Profile, "fit_mode" | "quick_sizes"> | null | undefined,
 ): string {
-  if (waist == null) return "Add your fit";
-  return inseam == null
-    ? `W${fmtNumber(waist)}`
-    : `W${fmtNumber(waist)}/L${fmtNumber(inseam)}`;
+  if (!profile) return "Add your fit";
+  if (profile.fit_mode === "personal_fit") return "Personal Fit";
+  const { tops, bottoms } = profile.quick_sizes;
+  return [
+    "Quick Fit",
+    tops && `Tops ${tops}`,
+    bottoms && `Bottoms ${bottoms}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 export function hostOf(url: string): string {
