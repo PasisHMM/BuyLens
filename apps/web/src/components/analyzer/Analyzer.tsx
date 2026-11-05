@@ -1,20 +1,14 @@
 "use client";
 
-import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { useApp } from "@/app/providers";
-import {
-  Button,
-  cx,
-  ProductImage,
-  VerdictBadge,
-} from "@/components/ui/primitives";
-import { ApiError, type CheckSummary } from "@/lib/api";
-import { SAMPLE_LINKS } from "@/lib/api/mock/scenarios";
-import { fmtLengthWithUnit, fmtMoney, hostOf } from "@/lib/format";
+import { ProductImage, VerdictBadge } from "@/components/ui/primitives";
+import type { CheckSummary } from "@/lib/api";
+import { fmtMoney, hostOf } from "@/lib/format";
+import { CheckForm } from "./CheckForm";
 import { ProgressDialog } from "./ProgressDialog";
 
 const VALUE_PROPS = [
@@ -37,49 +31,24 @@ const VALUE_PROPS = [
 
 export function Analyzer() {
   const router = useRouter();
-  const { api, profile, profileLoaded } = useApp();
-  const [url, setUrl] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const { api, profileLoaded } = useApp();
   const [runId, setRunId] = useState<string | null>(null);
+  const [startedUrl, setStartedUrl] = useState("");
   const [recent, setRecent] = useState<CheckSummary | null>(null);
-
-  useEffect(() => {
-    if (profileLoaded && !profile) router.replace("/preferences");
-  }, [profileLoaded, profile, router]);
 
   useEffect(() => {
     void api.recentChecks(1).then((r) => setRecent(r[0] ?? null));
   }, [api, runId]);
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!url.trim()) {
-      setError("Paste a product link first.");
-      return;
-    }
-    setError(null);
-    setSubmitting(true);
-    try {
-      const { id } = await api.createCheck(url.trim());
-      setRunId(id);
-    } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : "Something went wrong. Please try again.",
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
+  const onStarted = useCallback((id: string, url: string) => {
+    setStartedUrl(url);
+    setRunId(id);
+  }, []);
   const onComplete = useCallback(
     (id: string) => {
       // Close the dialog first: Next keeps this page alive in the background, and a still-open
       // dialog would replay "complete" and navigate back here when the user returns.
       setRunId(null);
-      setUrl("");
       router.push(`/checks/${id}`);
     },
     [router],
@@ -90,13 +59,14 @@ export function Analyzer() {
     setRunId(null);
   }, [api, runId]);
 
-  const unit = profile?.unit ?? "in";
   const linkLabel = (() => {
     try {
-      const u = new URL(url.includes("://") ? url : `https://${url}`);
-      return `${hostOf(url)}${u.pathname.length > 1 ? ` / ${u.pathname.split("/").filter(Boolean).pop()}` : ""}`;
+      const u = new URL(
+        startedUrl.includes("://") ? startedUrl : `https://${startedUrl}`,
+      );
+      return `${hostOf(startedUrl)}${u.pathname.length > 1 ? ` / ${u.pathname.split("/").filter(Boolean).pop()}` : ""}`;
     } catch {
-      return url;
+      return startedUrl;
     }
   })();
 
@@ -111,91 +81,11 @@ export function Analyzer() {
         you commit.
       </p>
 
-      <form
-        onSubmit={submit}
-        className="mt-7 flex flex-col gap-2.5 sm:flex-row"
-        noValidate
-      >
-        <label htmlFor="product-url" className="sr-only">
-          Product link
-        </label>
-        <div
-          className={cx(
-            "flex h-12 w-full shrink-0 items-center gap-3 rounded-lg border bg-frame px-4 focus-within:border-ink sm:h-14 sm:flex-1",
-            error ? "border-skip" : "border-line",
-          )}
-        >
-          <ArrowUpRight className="size-4 shrink-0 text-muted" aria-hidden />
-          <input
-            id="product-url"
-            type="url"
-            inputMode="url"
-            autoComplete="off"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="Paste product link…"
-            aria-invalid={Boolean(error)}
-            aria-describedby="product-url-help"
-            className="w-full bg-transparent text-[15px] outline-none placeholder:text-muted focus-visible:outline-none"
-          />
-        </div>
-        <Button
-          type="submit"
-          className="h-12 sm:h-[50px] sm:self-center sm:px-6"
-          disabled={submitting || !profile}
-        >
-          {submitting ? "Starting…" : "Check Product"}
-        </Button>
-      </form>
-      <p
-        id="product-url-help"
-        role={error ? "alert" : undefined}
-        className={cx("mt-4 text-xs", error ? "text-skip" : "text-muted")}
-      >
-        {error ??
-          "Works with most fashion retailers. No sign-in to the store needed."}
-      </p>
-
-      {api.mode === "mock" && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted">
-          <span>Prototype · try a sample:</span>
-          {SAMPLE_LINKS.map((s) => (
-            <button
-              key={s.url}
-              type="button"
-              onClick={() => {
-                setUrl(s.url);
-                setError(null);
-              }}
-              className="rounded-full border border-line bg-frame px-3 py-1 text-ink hover:border-ink/40"
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {profile && (
-        <div className="mt-12 flex items-end justify-between border-y border-line py-5 sm:mt-14">
-          <div>
-            <p className="eyebrow font-normal text-muted">
-              Checking against your profile
-            </p>
-            <p className="num mt-1.5 text-sm">
-              Waist {fmtLengthWithUnit(profile.waist, unit)} · Inseam{" "}
-              {fmtLengthWithUnit(profile.inseam, unit)}
-              {profile.hips != null && (
-                <> · Hips {fmtLengthWithUnit(profile.hips, unit)}</>
-              )}
-            </p>
-          </div>
-          <Link
-            href="/preferences"
-            className="text-sm underline underline-offset-4 hover:text-muted"
-          >
-            Edit
-          </Link>
-        </div>
+      {/* Mounted once the saved profile is known, so the form starts from it. */}
+      {profileLoaded ? (
+        <CheckForm onStarted={onStarted} />
+      ) : (
+        <div className="mt-7 min-h-[320px]" aria-busy />
       )}
 
       <div className="mt-12 grid gap-9 sm:mt-14 sm:grid-cols-3 sm:gap-8">

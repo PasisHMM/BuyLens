@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowUpRight } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -13,10 +13,18 @@ import {
   VERDICT_STYLE,
   VerdictBadge,
 } from "@/components/ui/primitives";
-import type { CheckResult, Feedback, OptionOut, Verdict } from "@/lib/api";
+import type {
+  CheckResult,
+  CheckView,
+  Feedback,
+  OptionOut,
+  Verdict,
+} from "@/lib/api";
 import { DIMENSION_NOUN, fmtMoney } from "@/lib/format";
 import { FitCheckCard, PriceCheckCard, SellerRiskCard } from "./cards";
+import { DemoResultView } from "./DemoResultView";
 import { FeedbackDialog, feedbackSummary } from "./FeedbackDialog";
+import { ViewAtRetailer } from "./ViewAtRetailer";
 
 const VERDICTS: Verdict[] = ["BUY", "CONSIDER", "SKIP"];
 
@@ -72,7 +80,7 @@ function decisionHint(
 
 export function CheckResultView({ id }: { id: string }) {
   const { api, toast } = useApp();
-  const [result, setResult] = useState<CheckResult | null | undefined>(
+  const [result, setResult] = useState<CheckView | null | undefined>(
     undefined,
   );
   const [selected, setSelected] = useState(1);
@@ -85,6 +93,7 @@ export function CheckResultView({ id }: { id: string }) {
   }, [api, id]);
 
   if (result === undefined) return <ResultSkeleton />;
+  if (result?.demo) return <DemoResultView result={result} />;
   if (
     result === null ||
     result.status !== "done" ||
@@ -315,9 +324,14 @@ export function CheckResultView({ id }: { id: string }) {
               Did you buy this item?
             </Button>
           )}
-          <ButtonLink href={option.url} external>
-            View at {seller} <ArrowUpRight className="size-4" aria-hidden />
-          </ButtonLink>
+          <ViewAtRetailer
+            offer={{
+              listingId: option.listing_id,
+              retailerId: option.seller.domain,
+              retailerName: option.seller.name,
+              url: option.url,
+            }}
+          />
         </div>
       </section>
 
