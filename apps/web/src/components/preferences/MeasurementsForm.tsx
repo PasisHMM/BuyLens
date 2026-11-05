@@ -1,61 +1,70 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import { useApp } from "@/app/providers";
 import { Button, Card, cx } from "@/components/ui/primitives";
-import { ApiError, type Brand, type Profile, type Unit } from "@/lib/api";
+import {
+  ApiError,
+  type Basis,
+  type Brand,
+  type Catalog,
+  type MeasurementIn,
+  type Profile,
+  type Unit,
+} from "@/lib/api";
 import { fmtNumber, fromCm, toCm } from "@/lib/format";
 import { BrandChips } from "./BrandChips";
 import { RulerIllustration } from "./RulerIllustration";
 
-type Dim = "waist" | "inseam" | "hips";
-const PLAUSIBLE_CM: Record<Dim, [number, number]> = {
-  waist: [45, 200],
-  inseam: [40, 120],
-  hips: [60, 200],
+type Dim = MeasurementIn["dimension"];
+type Field = { id: Dim; label: string; help: string; min: number; max: number };
+type Entry = { value: string; basis: Basis; note: string };
+type Entries = Partial<Record<Dim, Entry>>;
+const EMPTY: Entry = { value: "", basis: "body", note: "" };
+
+const HOW_TO: Partial<Record<Dim, string>> = {
+  chest: "Around the fullest part of your chest.",
+  waist: "Around your natural waist.",
+  hips: "Around the fullest part of your hips.",
+  shoulders: "Across your back, shoulder to shoulder.",
+  inseam: "From inner leg to ankle.",
 };
-const FIELDS: {
-  dim: Dim;
-  label: string;
-  help: string;
-  placeholder: Record<Unit, string>;
-  optional?: boolean;
-}[] = [
-  {
-    dim: "waist",
-    label: "Waist",
-    help: "Around your natural waist",
-    placeholder: { in: "26", cm: "66" },
-  },
-  {
-    dim: "inseam",
-    label: "Inseam",
-    help: "From inner leg to ankle",
-    placeholder: { in: "30", cm: "76" },
-  },
-  {
-    dim: "hips",
-    label: "Hips · optional",
-    help: "Around the fullest part of your hips. Helps us flag a close fit.",
-    placeholder: { in: "36", cm: "91" },
-    optional: true,
-  },
-];
 
-type Values = Record<Dim, string>;
+function fieldsFrom(catalog: Catalog): Field[] {
+  // Only measurements a fit rule uses are asked for.
+  return catalog.dimensions.flatMap((d) => {
+    const critical = catalog.categories.filter((c) => c.critical.includes(d.id));
+    const secondary = catalog.categories.filter((c) =>
+      c.secondary.includes(d.id),
+    );
+    if (!critical.length && !secondary.length) return [];
+    const uses = [
+      critical.length &&
+        `Critical for ${critical.map((c) => c.label).join(", ")}.`,
+      secondary.length &&
+        `Secondary for ${secondary.map((c) => c.label).join(", ")}.`,
+    ].filter(Boolean);
+    return [
+      {
+        id: d.id,
+        label: d.label,
+        help: [HOW_TO[d.id], ...uses].filter(Boolean).join(" "),
+        min: d.min_cm,
+        max: d.max_cm,
+      },
+    ];
+  });
+}
 
-function initial(profile: Profile | null): { unit: Unit; values: Values } {
-  const v = (n: number | null | undefined) => (n == null ? "" : fmtNumber(n));
-  return {
-    unit: profile?.unit ?? "in",
-    values: {
-      waist: v(profile?.waist),
-      inseam: v(profile?.inseam),
-      hips: v(profile?.hips),
-    },
-  };
+function initialEntries(profile: Profile | null): Entries {
+  return Object.fromEntries(
+    (profile?.measurements ?? []).map((m) => [
+      m.dimension,
+      { value: fmtNumber(m.value), basis: m.basis, note: m.note ?? "" },
+    ]),
+  );
 }
 
 function parse(raw: string): number | null {
@@ -63,39 +72,70 @@ function parse(raw: string): number | null {
   return raw.trim() && Number.isFinite(n) ? n : null;
 }
 
-function validate(values: Values, unit: Unit): Partial<Record<Dim, string>> {
+function validate(
+  fields: Field[],
+  entries: Entries,
+  unit: Unit,
+): Partial<Record<Dim, string>> {
   const errors: Partial<Record<Dim, string>> = {};
-  for (const { dim, label, optional } of FIELDS) {
-    const raw = values[dim];
-    const name = label.split(" ·")[0];
-    if (!raw.trim()) {
-      if (!optional) errors[dim] = `Add your ${name.toLowerCase()}.`;
-      continue;
-    }
+  for (const { id, label, min, max } of fields) {
+    const raw = entries[id]?.value ?? "";
+    if (!raw.trim()) continue;
     const n = parse(raw);
     if (n == null || n <= 0) {
-      errors[dim] = "Use a number, like 26 or 26.5.";
+      errors[id] = "Use a number, like 66 or 66.5.";
       continue;
     }
-    const [lo, hi] = PLAUSIBLE_CM[dim];
     const cm = toCm(n, unit);
-    if (cm < lo || cm > hi)
-      errors[dim] = `${name} looks off. Check the unit (IN / cm).`;
+    if (cm < min || cm > max)
+      errors[id] = `${label.split(" /")[0]} looks off. Check the unit (IN / cm).`;
   }
   return errors;
 }
 
-export function MeasurementsForm() {
-  const { profile, profileLoaded } = useApp();
-  if (!profileLoaded) return <div className="min-h-[70vh]" aria-busy />;
-  return <Form key={profile?.updated_at ?? "new"} profile={profile} />;
+function toMeasurements(fields: Field[], entries: Entries): MeasurementIn[] {
+  return fields.flatMap(({ id }) => {
+    const entry = entries[id];
+    const value = entry ? parse(entry.value) : null;
+    if (!entry || value == null) return [];
+    const note = entry.basis === "garment" ? entry.note.trim() : "";
+    return [{ dimension: id, value, basis: entry.basis, note: note || null }];
+  });
 }
 
-function Form({ profile }: { profile: Profile | null }) {
+export function MeasurementsForm() {
+  const { api, profile, profileLoaded } = useApp();
+  const [catalog, setCatalog] = useState<Catalog | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    api.getMeasurements().then(setCatalog, () => setFailed(true));
+  }, [api]);
+
+  if (failed)
+    return (
+      <p role="alert" className="mx-auto max-w-[640px] px-4 py-20 text-center">
+        We couldn’t load the measurement list. Please reload the page.
+      </p>
+    );
+  if (!profileLoaded || !catalog)
+    return <div className="min-h-[70vh]" aria-busy />;
+  return (
+    <Form
+      key={profile?.updated_at ?? "new"}
+      profile={profile}
+      fields={fieldsFrom(catalog)}
+    />
+  );
+}
+
+function Form({ profile, fields }: { profile: Profile | null; fields: Field[] }) {
   const router = useRouter();
   const { api, reloadProfile } = useApp();
-  const [unit, setUnit] = useState<Unit>(() => initial(profile).unit);
-  const [values, setValues] = useState<Values>(() => initial(profile).values);
+  const [unit, setUnit] = useState<Unit>(profile?.unit ?? "cm");
+  const [entries, setEntries] = useState<Entries>(() =>
+    initialEntries(profile),
+  );
   const [brands, setBrands] = useState<Brand[]>(profile?.brands ?? []);
   const [errors, setErrors] = useState<Partial<Record<Dim, string>>>({});
   const [saving, setSaving] = useState(false);
@@ -104,32 +144,47 @@ function Form({ profile }: { profile: Profile | null }) {
 
   function switchUnit(next: Unit) {
     if (next === unit) return;
-    setValues((current) => {
-      const out = { ...current };
-      for (const dim of Object.keys(out) as Dim[]) {
-        const n = parse(out[dim]);
-        if (n != null)
-          out[dim] = fmtNumber(next === "cm" ? toCm(n, "in") : fromCm(n, "in"));
-      }
-      return out;
-    });
+    setEntries((current) =>
+      Object.fromEntries(
+        Object.entries(current).map(([dim, entry]) => {
+          const n = parse(entry.value);
+          const value =
+            n == null
+              ? entry.value
+              : fmtNumber(next === "cm" ? toCm(n, "in") : fromCm(n, "in"));
+          return [dim, { ...entry, value }];
+        }),
+      ),
+    );
     setUnit(next);
     setErrors({});
   }
 
+  function update(dim: Dim, change: Partial<Entry>) {
+    setEntries((cur) => ({
+      ...cur,
+      [dim]: { ...(cur[dim] ?? EMPTY), ...change },
+    }));
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    const found = validate(values, unit);
+    const found = validate(fields, entries, unit);
     setErrors(found);
     if (Object.keys(found).length) return;
+    const measurements = toMeasurements(fields, entries);
+    if (!measurements.length) {
+      setSaveError("Add at least one measurement.");
+      return;
+    }
     setSaving(true);
     setSaveError(null);
     try {
+      // Quick Fit sizes aren't part of this request, so they stay saved.
       await api.saveProfile({
+        fit_mode: "personal_fit",
         unit,
-        waist: parse(values.waist)!,
-        inseam: parse(values.inseam)!,
-        hips: parse(values.hips),
+        measurements,
         brand_ids: brands.map((b) => b.id),
       });
       await reloadProfile();
@@ -152,11 +207,14 @@ function Form({ profile }: { profile: Profile | null }) {
           Better buys start with your fit.
         </h1>
         <p className="mt-5 max-w-[420px] text-base leading-relaxed text-muted sm:mt-8">
-          Sizes vary. Your measurements don’t. Give us a starting point for
-          advice that actually fits you.
+          Sizes vary. Your measurements don’t. Add the ones you know; anything
+          missing makes a result uncertain, never wrong.
         </p>
         <div className="hidden lg:block">
-          <RulerIllustration value={parse(values.waist)} unit={unit} />
+          <RulerIllustration
+            value={parse(entries.waist?.value ?? "")}
+            unit={unit}
+          />
           <p className="mt-6 max-w-[420px] text-xs leading-relaxed text-muted">
             Private by design. Your profile is used only to personalize your
             product checks.
@@ -193,18 +251,15 @@ function Form({ profile }: { profile: Profile | null }) {
             </div>
           </div>
 
-          <div className="mt-7 grid grid-cols-2 gap-x-4 gap-y-6">
-            {FIELDS.map((f) => (
+          <div className="mt-7 grid gap-x-4 gap-y-6 sm:grid-cols-2">
+            {fields.map((f) => (
               <MeasurementField
-                key={f.dim}
-                className={f.dim === "hips" ? "col-span-2" : ""}
-                label={f.label}
-                help={f.help}
+                key={f.id}
+                field={f}
                 unit={unit}
-                placeholder={f.placeholder[unit]}
-                value={values[f.dim]}
-                error={errors[f.dim]}
-                onChange={(v) => setValues((cur) => ({ ...cur, [f.dim]: v }))}
+                entry={entries[f.id] ?? EMPTY}
+                error={errors[f.id]}
+                onChange={(change) => update(f.id, change)}
               />
             ))}
           </div>
@@ -235,29 +290,24 @@ function Form({ profile }: { profile: Profile | null }) {
 }
 
 function MeasurementField({
-  label,
-  help,
+  field,
   unit,
-  value,
-  placeholder,
+  entry,
   error,
   onChange,
-  className,
 }: {
-  label: string;
-  help: string;
+  field: Field;
   unit: Unit;
-  value: string;
-  placeholder: string;
+  entry: Entry;
   error?: string;
-  onChange: (value: string) => void;
-  className?: string;
+  onChange: (change: Partial<Entry>) => void;
 }) {
   const id = useId();
+  const name = field.label.split(" /")[0];
   return (
-    <div className={className}>
+    <div>
       <label htmlFor={id} className="text-sm">
-        {label}
+        {field.label}
       </label>
       <div
         className={cx(
@@ -269,12 +319,11 @@ function MeasurementField({
           id={id}
           inputMode="decimal"
           autoComplete="off"
-          value={value}
-          placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value)}
+          value={entry.value}
+          onChange={(e) => onChange({ value: e.target.value })}
           aria-invalid={Boolean(error)}
           aria-describedby={`${id}-help`}
-          className="num w-full bg-transparent text-2xl outline-none placeholder:text-faint focus-visible:outline-none"
+          className="num w-full bg-transparent text-2xl outline-none focus-visible:outline-none"
         />
         <span className="text-xs text-muted">{unit}</span>
       </div>
@@ -282,8 +331,42 @@ function MeasurementField({
         id={`${id}-help`}
         className={cx("mt-2 text-xs", error ? "text-skip" : "text-muted")}
       >
-        {error ?? help}
+        {error ?? field.help}
       </p>
+      <div
+        role="radiogroup"
+        aria-label={`${name} is measured on`}
+        className="mt-2 flex gap-3 text-xs"
+      >
+        {(["body", "garment"] as Basis[]).map((basis) => (
+          <button
+            key={basis}
+            type="button"
+            role="radio"
+            aria-checked={entry.basis === basis}
+            aria-label={`${name}: ${basis === "body" ? "Body" : "Garment"}`}
+            onClick={() => onChange({ basis })}
+            className={cx(
+              "underline-offset-4",
+              entry.basis === basis
+                ? "font-semibold text-ink underline"
+                : "text-muted hover:text-ink",
+            )}
+          >
+            {basis === "body" ? "Body" : "Garment"}
+          </button>
+        ))}
+      </div>
+      {entry.basis === "garment" && (
+        <input
+          aria-label={`${name} garment note`}
+          value={entry.note}
+          maxLength={200}
+          placeholder="Which garment? e.g. My blue jeans"
+          onChange={(e) => onChange({ note: e.target.value })}
+          className="mt-2 h-9 w-full rounded-lg border border-line bg-frame px-3 text-xs outline-none focus:border-ink"
+        />
+      )}
     </div>
   );
 }
