@@ -14,7 +14,7 @@ from app.pipeline.measurements import (
     parse_dimension,
     rule_for,
 )
-from app.pipeline.models import Basis, Dimension, FitCategory, SizeSystem
+from app.pipeline.models import Basis, Dimension, FitCategory, QuickSize, SizeSystem
 
 D = Dimension
 
@@ -171,3 +171,41 @@ def test_size_reference_rejects_unsourced_or_impossible_rows(
 ) -> None:
     with pytest.raises(ValueError, match=message):
         _reference(**overrides)
+
+
+# ── Inclusive limits (docs/redesign-plan.md §2.2): the published ends of a range belong to it. ──
+
+
+@pytest.mark.parametrize(
+    ("cm", "expected"),
+    [(44.9, False), (45.0, True), (200.0, True), (200.1, False)],
+)
+def test_plausible_range_includes_both_ends(cm: float, expected: bool) -> None:
+    assert is_plausible(D.WAIST, cm) is expected
+
+
+def _waist_range(min_cm: float, max_cm: float) -> SizeReference:
+    return SizeReference(SizeSystem.EU, FitCategory.BOTTOMS, QuickSize.S, D.WAIST, min_cm, max_cm, "test chart")
+
+
+@pytest.mark.parametrize(
+    ("cm", "expected"),
+    [(65.9, False), (66.0, True), (70.0, True), (70.1, False)],
+)
+def test_size_reference_covers_both_published_ends(cm: float, expected: bool) -> None:
+    assert _waist_range(66.0, 70.0).covers(cm) is expected
+
+
+def test_size_reference_rejects_an_empty_range() -> None:
+    with pytest.raises(ValueError, match="min_cm"):
+        _waist_range(66.0, 66.0)
+
+
+def test_size_reference_accepts_the_plausible_limits_as_its_ends() -> None:
+    assert _waist_range(45.0, 200.0).covers(45.0)
+
+
+@pytest.mark.parametrize(("body", "garment"), [(0.0, 1.0), (1.0, 0.0)], ids=["body", "garment"])
+def test_a_tolerance_of_zero_is_rejected(body: float, garment: float) -> None:
+    with pytest.raises(ValueError, match="positive"):
+        CategoryRule(frozenset({D.WAIST}), frozenset(), body, garment)
