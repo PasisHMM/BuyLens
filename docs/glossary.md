@@ -20,6 +20,13 @@ The domain terms used in code, the database and the UI. Code names are in `servi
 | **Size system** | `SizeSystem` · `size_system` | EU or US. Picked by the user before Quick Fit sizes. |
 | **Size reference** | `SizeReference` · `size_references` | The approximate body range in cm for a standard size, always with a named **source**. Quick Fit uses it. |
 | **Fit outcome** | `FitOutcome` | The result of comparing a profile with one listing. **MATCH:** every critical measurement is within tolerance. **UNCERTAIN:** data is missing or not enough to judge. **MISMATCH:** a critical measurement is outside tolerance (Personal Fit only). |
+| **Demo shop** | `SHOPS` in `lib/shops.ts`, `pipeline/demo_shop.py` | **Merchandizable:** a fictional shop for the mock-data prototype. Not a supported retailer. |
+| **Demo size chart** | `DEMO_CHART` | The demo shop's body chart, XXS–4XL, with EU and UK labels. Sample data, not verified, and separate from the global catalog and Quick Fit sizes. |
+| **Coming-soon shop** | `status: "coming_soon"` | A shop shown gray and disabled. Its definition is kept so it can be re-enabled by configuration. |
+| **Offer** | `Offer` in `lib/outbound.ts` | One displayed option: `listing_id` (stable offer identifier), `seller.domain` (retailer) and `url`. |
+| **Outbound link** | `resolveOutboundLink` | A validated link to the offer's own page. Adds no tracking. |
+| **Prototype milestone** | §11.1 | A demonstrable product on mock data. Doesn't need a readable store. |
+| **Live-product milestone** | §11.1 | Real retailers, real data, production services. Needs at least one readable EU store. |
 | **Rule set** | `RuleSet` (planned, Phase 9) | The complete, validated values the engine uses for one check. Plain data, never code. Built from the **defaults** in code, or from a published version. |
 | **Published version** | `rule_set_versions` (planned, Phase 9) | An immutable snapshot of a rule set. One is active at a time. Rollback publishes an older snapshot as a new version. |
 | **Content block** | planned, Phase 9 | One typed piece of page content (e.g. heading, FAQ item) or a predefined section, from a fixed registry. Holds no HTML or code. |
