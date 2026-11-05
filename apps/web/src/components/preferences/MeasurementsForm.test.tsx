@@ -114,6 +114,14 @@ describe("MeasurementsForm", () => {
     expect(waist.value).toBe("26");
   });
 
+  it("leaves values alone when the current unit is picked again", async () => {
+    render(<MeasurementsForm />);
+    const waist = await field("Waist");
+    type(waist, "66");
+    fireEvent.click(screen.getByRole("radio", { name: "cm" }));
+    expect(waist.value).toBe("66");
+  });
+
   it("shows the garment note only for a garment measurement", async () => {
     render(<MeasurementsForm />);
     await field("Waist");

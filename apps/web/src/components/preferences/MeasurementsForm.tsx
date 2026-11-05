@@ -67,6 +67,14 @@ function initialEntries(profile: Profile | null): Entries {
   );
 }
 
+function initialForm(profile: Profile | null) {
+  return {
+    unit: profile?.unit ?? ("cm" as Unit),
+    entries: initialEntries(profile),
+    brands: profile?.brands ?? [],
+  };
+}
+
 function parse(raw: string): number | null {
   const n = Number(raw.replace(",", "."));
   return raw.trim() && Number.isFinite(n) ? n : null;
@@ -248,11 +256,10 @@ export function MeasurementsForm() {
 function Form({ profile, fields }: { profile: Profile | null; fields: Field[] }) {
   const router = useRouter();
   const { api, reloadProfile } = useApp();
-  const [unit, setUnit] = useState<Unit>(profile?.unit ?? "cm");
-  const [entries, setEntries] = useState<Entries>(() =>
-    initialEntries(profile),
-  );
-  const [brands, setBrands] = useState<Brand[]>(profile?.brands ?? []);
+  const start = initialForm(profile);
+  const [unit, setUnit] = useState<Unit>(start.unit);
+  const [entries, setEntries] = useState<Entries>(start.entries);
+  const [brands, setBrands] = useState<Brand[]>(start.brands);
   const [errors, setErrors] = useState<Partial<Record<Dim, string>>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
