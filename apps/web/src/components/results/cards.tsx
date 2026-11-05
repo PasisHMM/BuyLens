@@ -1,14 +1,9 @@
-import { BadgeDollarSign, Ruler, ShieldCheck } from "lucide-react";
+import { BadgeEuro, Ruler, ShieldCheck } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Callout, Card, cx } from "@/components/ui/primitives";
-import type { FitCheck, PriceCheck, SellerRisk, Unit } from "@/lib/api";
-import {
-  DIMENSION_LABEL,
-  DIMENSION_NOUN,
-  fmtLength,
-  fmtMoney,
-} from "@/lib/format";
+import { Card, cx, OutcomeBadge } from "@/components/ui/primitives";
+import type { FitCheck, FitRow, PriceCheck, SellerRisk, Unit } from "@/lib/api";
+import { DIMENSION_LABEL, fmtLength, fmtMoney } from "@/lib/format";
 
 function CardShell({
   icon,
@@ -52,13 +47,10 @@ function Row({
 
 export function PriceCheckCard({ price }: { price: PriceCheck }) {
   const c = price.currency;
-  const below = price.delta_cents != null && price.delta_cents < 0;
   return (
     <CardShell
-      icon={
-        <BadgeDollarSign className="size-5" strokeWidth={1.5} aria-hidden />
-      }
-      title="Price Check"
+      icon={<BadgeEuro className="size-5" strokeWidth={1.5} aria-hidden />}
+      title="Price"
       subtitle="The full cost. No checkout surprises."
     >
       <Row label="Listing price" value={fmtMoney(price.listing_cents, c)} />
@@ -66,7 +58,7 @@ export function PriceCheckCard({ price }: { price: PriceCheck }) {
         label="Shipping"
         value={
           price.shipping_cents == null
-            ? "Unknown"
+            ? "Shipping cost unverified"
             : fmtMoney(price.shipping_cents, c)
         }
       />
@@ -78,177 +70,126 @@ export function PriceCheckCard({ price }: { price: PriceCheck }) {
         value={fmtMoney(price.total_cents, c)}
         big
       />
-      <Row
-        label="Market average"
-        value={
-          price.market_avg_cents == null
-            ? "Not enough data"
-            : fmtMoney(price.market_avg_cents, c)
-        }
-      />
-      <div className="mt-4">
-        {price.delta_cents == null || price.delta_pct == null ? (
-          <p className="rounded-lg bg-subtle px-4 py-3 text-xs text-muted">
-            Fewer than 3 comparable listings, so there’s no market average yet.
-          </p>
-        ) : price.delta_cents === 0 ? (
-          <Callout tone="consider" title="At the market average">
-            {price.comparable_count} comparable listings
-          </Callout>
-        ) : (
-          <Callout
-            tone={below ? "buy" : "consider"}
-            title={`${fmtMoney(Math.abs(price.delta_cents), c)} ${below ? "below" : "above"} average`}
-          >
-            {Math.abs(price.delta_pct).toFixed(1)}% {below ? "less" : "more"} ·{" "}
-            {price.comparable_count} comparable listings
-          </Callout>
-        )}
-      </div>
-      <p className="mt-auto pt-5 text-[11px] leading-relaxed text-muted">
-        {c}, before sales tax. Checked just now. Market average excludes
-        shipping.
-        {price.total_is_estimate &&
-          " Shipping isn’t listed, so the total may be higher."}
-      </p>
     </CardShell>
   );
 }
 
-export function FitCheckCard({ fit, unit }: { fit: FitCheck; unit: Unit }) {
-  const missing = fit.rows.filter((r) => r.match === "missing");
-  const misfit = fit.rows.filter((r) => !["ok", "missing"].includes(r.match));
-  const otherAlerts = fit.alerts.filter(
-    (a) => !a.endsWith("measurement unavailable"),
+const MODE_LABEL = {
+  quick_fit: "Quick Fit · approximate",
+  personal_fit: "Personal Fit",
+};
+
+function chartRange(row: FitRow, unit: Unit): string {
+  const { chart_min_cm: low, chart_max_cm: high } = row;
+  if (low == null || high == null) return "Not listed";
+  return low === high
+    ? fmtLength(low, unit)
+    : `${fmtLength(low, unit)}–${fmtLength(high, unit)}`;
+}
+
+function FitRows({ rows, unit }: { rows: FitRow[]; unit: Unit }) {
+  return (
+    <table className="num mt-4 w-full text-sm">
+      <thead>
+        <tr className="border-b border-line text-left text-[11px] tracking-wide text-muted uppercase">
+          <th className="pb-2 font-normal">Measure</th>
+          <th className="pb-2 text-right font-normal">You</th>
+          <th className="pb-2 text-right font-normal">Size chart</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.dimension} className="border-b border-line last:border-0">
+            <td className="py-2.5">
+              {DIMENSION_LABEL[r.dimension] ?? r.dimension}
+              {r.role === "secondary" && (
+                <span className="text-xs text-muted"> · additional</span>
+              )}
+            </td>
+            <td className="py-2.5 text-right">{fmtLength(r.user_cm, unit)}</td>
+            <td
+              className={cx(
+                "py-2.5 text-right",
+                r.status === "outside" && "text-negative",
+              )}
+            >
+              {chartRange(r, unit)}
+              <span className="sr-only"> ({r.status})</span>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
+}
+
+export function FitCheckCard({ fit, unit }: { fit: FitCheck; unit: Unit }) {
+  const {
+    mode = "personal_fit",
+    outcome = "uncertain",
+    reasons = [],
+    rows = [],
+  } = fit;
+  const size = fit.size_label ? ` · Size ${fit.size_label}` : "";
   return (
     <CardShell
       icon={
         <Ruler className="size-5 -rotate-45" strokeWidth={1.5} aria-hidden />
       }
-      title="Fit Check"
-      subtitle={`${fit.size_label} · All measurements in ${unit === "in" ? "inches" : "cm"}`}
+      title="Fit"
+      subtitle={`${MODE_LABEL[mode]}${size} · ${unit === "in" ? "inches" : "cm"}`}
     >
-      <table className="num w-full text-sm">
-        <thead>
-          <tr className="border-b border-line text-left text-[11px] tracking-wide text-muted uppercase">
-            <th className="pb-2 font-normal">Measure</th>
-            <th className="pb-2 text-right font-normal">You</th>
-            <th className="pb-2 text-right font-normal">
-              {fit.rows.some((r) => r.basis === "body")
-                ? "Size chart"
-                : "Garment"}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {fit.rows.map((r) => (
-            <tr
-              key={r.dimension}
-              className="border-b border-line last:border-0"
-            >
-              <td className="py-3.5">
-                {DIMENSION_LABEL[r.dimension] ?? r.dimension}
-              </td>
-              <td className="py-3.5 text-right text-base">
-                {fmtLength(r.user_cm, unit)}
-              </td>
-              <td
-                className={cx(
-                  "py-3.5 text-right text-base",
-                  !["ok", "missing"].includes(r.match) && "text-skip",
-                )}
-              >
-                {fmtLength(r.garment_cm, unit)}
-                <span className="sr-only"> ({r.match})</span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      <div className="mt-4 space-y-2">
-        {misfit.map((r) => (
-          <Callout
-            key={r.dimension}
-            tone="skip"
-            title={`Likely ${r.match} at the ${DIMENSION_NOUN[r.dimension] ?? r.dimension}`}
-          >
-            Outside the range we’d expect for your{" "}
-            {DIMENSION_NOUN[r.dimension] ?? r.dimension} in this size.
-          </Callout>
-        ))}
-        {missing.map((r) => {
-          const noun = DIMENSION_NOUN[r.dimension] ?? r.dimension;
-          return (
-            <Callout
-              key={r.dimension}
-              tone="consider"
-              title={`${noun.charAt(0).toUpperCase()}${noun.slice(1)} measurement unavailable`}
-            >
-              We can’t confirm {noun} fit. Ask the seller before ordering.
-            </Callout>
-          );
-        })}
-        {otherAlerts.map((a) => (
-          <Callout key={a} tone="consider" title={a} />
-        ))}
+      <div>
+        <OutcomeBadge outcome={outcome} />
       </div>
-      <p className="mt-auto pt-5 text-[11px] leading-relaxed text-muted">
-        {fit.notes} Fit confidence: {fit.confidence}.
-      </p>
+      <ul className="mt-4 space-y-2 text-sm text-muted">
+        {reasons.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
+      {rows.length > 0 && <FitRows rows={rows} unit={unit} />}
     </CardShell>
   );
 }
 
 const RISK_STYLE = {
-  low: { label: "Low risk", cls: "bg-buy-bg text-buy" },
-  medium: { label: "Medium risk", cls: "bg-consider-bg text-consider" },
-  high: { label: "High risk", cls: "bg-skip-bg text-skip" },
+  low: { label: "Low risk", cls: "bg-positive-bg text-positive" },
+  medium: { label: "Medium risk", cls: "bg-caution-bg text-caution" },
+  high: { label: "High risk", cls: "bg-negative-bg text-negative" },
 } as const;
 
-export function SellerRiskCard({
-  risk,
-  brand,
-}: {
-  risk: SellerRisk;
-  brand: string | null;
-}) {
-  const policy = risk.return_policy;
-  const style = RISK_STYLE[risk.level];
+function TrustRating({ risk }: { risk: SellerRisk }) {
+  const style = risk.level ? RISK_STYLE[risk.level] : null;
+  return (
+    <div className="flex items-start justify-between">
+      <div>
+        <p className="num text-[32px] leading-none">
+          {risk.trust_rating == null
+            ? "—"
+            : `${risk.trust_rating.toFixed(1)} / 5`}
+        </p>
+        <p className="mt-2 text-xs text-muted">
+          {risk.trust_rating == null
+            ? "Seller not rated yet"
+            : "Seller trust rating"}
+        </p>
+      </div>
+      <span
+        className={cx(
+          "rounded-full px-2.5 py-1 text-xs font-medium",
+          style ? style.cls : "bg-subtle text-muted",
+        )}
+      >
+        {style ? style.label : "Not enough data"}
+      </span>
+    </div>
+  );
+}
+
+function ProductReviews({ risk }: { risk: SellerRisk }) {
   const flags = risk.review_highlights;
   return (
-    <CardShell
-      icon={<ShieldCheck className="size-5" strokeWidth={1.5} aria-hidden />}
-      title="Seller Risk"
-      subtitle={
-        risk.is_official
-          ? `${brand ?? risk.seller_name} · Official brand store`
-          : risk.seller_name
-      }
-    >
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="num text-[32px] leading-none">
-            {risk.trust_rating == null
-              ? "—"
-              : `${risk.trust_rating.toFixed(1)} / 5`}
-          </p>
-          <p className="mt-2 text-xs text-muted">
-            {risk.trust_rating == null
-              ? "Seller not rated yet"
-              : "Seller trust rating"}
-          </p>
-        </div>
-        <span
-          className={cx(
-            "rounded-full px-2.5 py-1 text-xs font-medium",
-            style.cls,
-          )}
-        >
-          {style.label}
-        </span>
-      </div>
-
+    <>
       <div className="mt-7 flex items-baseline justify-between">
         <span className="text-sm text-muted">Product reviews</span>
         <span className="num text-sm">
@@ -267,14 +208,39 @@ export function SellerRiskCard({
           {flags.map((f) => (
             <li
               key={f}
-              className={risk.level === "high" ? "text-skip" : "text-muted"}
+              className={
+                risk.level === "high" ? "text-negative" : "text-muted"
+              }
             >
               “{f}”
             </li>
           ))}
         </ul>
       )}
+    </>
+  );
+}
 
+export function SellerRiskCard({
+  risk,
+  brand,
+}: {
+  risk: SellerRisk;
+  brand: string | null;
+}) {
+  const policy = risk.return_policy;
+  return (
+    <CardShell
+      icon={<ShieldCheck className="size-5" strokeWidth={1.5} aria-hidden />}
+      title="Seller Reliability"
+      subtitle={
+        risk.is_official
+          ? `${brand ?? risk.seller_name} · Official brand store`
+          : risk.seller_name
+      }
+    >
+      <TrustRating risk={risk} />
+      <ProductReviews risk={risk} />
       <div className="my-5 border-t border-line" />
       <p className="text-[15px]">
         {policy.verified
@@ -285,10 +251,6 @@ export function SellerRiskCard({
         {policy.verified
           ? policy.details
           : "Check the store’s return terms before you order."}
-      </p>
-      <p className="mt-auto pt-5 text-[11px] leading-relaxed text-muted">
-        Based on store policies and verified reviews. Confirm the policy at
-        checkout.
       </p>
     </CardShell>
   );

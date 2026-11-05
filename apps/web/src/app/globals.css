@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* Buy Lens design tokens.
-   Given by the design: bg, ink, frame, button on/off, buy/consider/skip text + background.
+   Given by the design: bg, ink, frame, button on/off, positive/caution/negative text + background.
    Derived from the screenshots: muted, faint, line, subtle. */
 @theme {
   --color-bg: #f9f8f6;
@@ -10,12 +10,12 @@
   --color-btn-off: #f9f8f6;
   --color-btn-on: #19181d;
 
-  --color-buy: #7ca28d;
-  --color-buy-bg: #eaf2ec;
-  --color-consider: #976d2d;
-  --color-consider-bg: #f5eddc;
-  --color-skip: #a33e36;
-  --color-skip-bg: #f8eae7;
+  --color-positive: #7ca28d;
+  --color-positive-bg: #eaf2ec;
+  --color-caution: #976d2d;
+  --color-caution-bg: #f5eddc;
+  --color-negative: #a33e36;
+  --color-negative-bg: #f8eae7;
 
   --color-muted: #6e6c72;
   --color-faint: #a09ea3;

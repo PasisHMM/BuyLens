@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { useApp } from "@/app/providers";
-import { ProductImage, VerdictBadge } from "@/components/ui/primitives";
+import { OutcomeBadge, ProductImage } from "@/components/ui/primitives";
 import type { CheckSummary } from "@/lib/api";
 import { fmtMoney, hostOf } from "@/lib/format";
 import { CheckForm } from "./CheckForm";
@@ -15,7 +15,7 @@ const VALUE_PROPS = [
   {
     n: "01",
     title: "The real price",
-    body: "Listing + shipping, compared with the market.",
+    body: "Listing + shipping, side by side in euros.",
   },
   {
     n: "02",
@@ -50,13 +50,13 @@ function RecentCheck({ recent }: { recent: CheckSummary }) {
         <p className="eyebrow font-normal text-muted">A recent check</p>
         <p className="mt-1 truncate text-[15px]">{recent.product_name}</p>
         <p className="num mt-1 text-sm text-muted">
-          {fmtMoney(recent.total_cents, recent.currency ?? "USD")}
+          {recent.currency ? fmtMoney(recent.total_cents, recent.currency) : "Hidden"}
           {recent.selected_size && ` · ${recent.selected_size}`}
         </p>
       </div>
-      {recent.verdict && (
+      {recent.fit_outcome && (
         <span className="hidden sm:block">
-          <VerdictBadge verdict={recent.verdict} />
+          <OutcomeBadge outcome={recent.fit_outcome} />
         </span>
       )}
     </Link>

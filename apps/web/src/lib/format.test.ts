@@ -6,7 +6,6 @@ import {
   fmtMoney,
   fromCm,
   hostOf,
-  joinList,
   profilePill,
   toCm,
 } from "./format";
@@ -53,15 +52,6 @@ describe("fmtMoney", () => {
   it("shows a dash for unknown amounts but formats zero", () => {
     expect(fmtMoney(null)).toBe("—");
     expect(fmtMoney(0)).toBe("$0.00");
-  });
-});
-
-describe("joinList", () => {
-  it("joins with commas and a final 'and'", () => {
-    expect(joinList([])).toBe("");
-    expect(joinList(["waist"])).toBe("waist");
-    expect(joinList(["waist", "hip"])).toBe("waist and hip");
-    expect(joinList(["waist", "hip", "inseam"])).toBe("waist, hip and inseam");
   });
 });
 

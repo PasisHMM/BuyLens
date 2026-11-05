@@ -5,7 +5,7 @@ import { Check, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button, cx } from "@/components/ui/primitives";
-import type { Feedback, FitOutcome, HeldBackReason } from "@/lib/api";
+import type { Feedback, FitFeedback, HeldBackReason } from "@/lib/api";
 
 const REASONS: { id: HeldBackReason; label: string }[] = [
   { id: "price", label: "Price" },
@@ -15,7 +15,7 @@ const REASONS: { id: HeldBackReason; label: string }[] = [
 
 export function fitOptions(
   dimension: string | null,
-): { id: FitOutcome; label: string }[] {
+): { id: FitFeedback; label: string }[] {
   return [
     {
       id: "too_tight",
@@ -54,7 +54,7 @@ export function FeedbackDialog({
   onSave: (feedback: Feedback) => Promise<void>;
 }) {
   const [purchased, setPurchased] = useState<boolean | null>(null);
-  const [fit, setFit] = useState<FitOutcome | null>(null);
+  const [fit, setFit] = useState<FitFeedback | null>(null);
   const [reasons, setReasons] = useState<HeldBackReason[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +91,7 @@ export function FeedbackDialog({
         <Dialog.Overlay className="fixed inset-0 z-40 bg-[#19181d]/35" />
         <Dialog.Content className="fixed top-[8vh] left-1/2 z-50 max-h-[88vh] w-[calc(100%-32px)] max-w-[520px] -translate-x-1/2 overflow-auto rounded-2xl bg-bg p-6 shadow-2xl sm:top-[16vh] sm:p-9">
           <div className="flex items-start justify-between">
-            <p className="eyebrow text-muted">A better next verdict</p>
+            <p className="eyebrow text-muted">Tell us how it went</p>
             <Dialog.Close
               className="-mt-1 rounded p-1 text-muted hover:text-ink"
               aria-label="Close"
@@ -181,7 +181,7 @@ export function FeedbackDialog({
           )}
 
           {error && (
-            <p role="alert" className="mt-5 text-sm text-skip">
+            <p role="alert" className="mt-5 text-sm text-negative">
               {error}
             </p>
           )}
@@ -193,8 +193,7 @@ export function FeedbackDialog({
             {saving ? "Saving…" : "Save feedback"}
           </Button>
           <p className="mt-4 text-center text-xs text-muted">
-            Only used to improve your future verdicts. Not posted as a public
-            review.
+            Only used for your future checks. Not posted as a public review.
           </p>
         </Dialog.Content>
       </Dialog.Portal>

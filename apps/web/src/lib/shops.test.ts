@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { KNOWN_WITHOUT_SAMPLE, MOCK_STORES } from "./api/mock/scenarios";
 import {
   DEFAULT_SHOP,
   readSelectedShop,
@@ -32,7 +31,14 @@ describe("SHOPS", () => {
 
   it("keeps every existing store, deferred instead of deleted", () => {
     const domains = SHOPS.flatMap((s) => s.domains);
-    for (const domain of [...Object.keys(MOCK_STORES), ...KNOWN_WITHOUT_SAMPLE])
+    for (const domain of [
+      "levi.com",
+      "madewell.com",
+      "denimmarket.example",
+      "agolde.com",
+      "everlane.com",
+      "nordstrom.com",
+    ])
       expect(domains).toContain(domain);
     for (const shop of SHOPS.filter((s) => s.id !== "merchandizable"))
       expect(shop.status).toBe("coming_soon");

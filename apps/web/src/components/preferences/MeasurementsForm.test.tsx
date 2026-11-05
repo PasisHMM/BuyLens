@@ -53,10 +53,16 @@ afterEach(cleanup);
 describe("MeasurementsForm", () => {
   it("builds its fields from the catalog, for measurements a rule uses", async () => {
     render(<MeasurementsForm />);
-    for (const label of ["Chest / bust", "Waist", "Hips", "Shoulders", "Inseam"])
+    for (const label of [
+      "Chest / bust",
+      "Waist",
+      "Hips",
+      "Shoulders",
+      "Inseam",
+      "Sleeve length",
+    ])
       expect(await field(label)).toBeTruthy();
     expect(screen.queryByLabelText(/^Height/)).toBeNull();
-    expect(screen.queryByLabelText(/^Sleeve/)).toBeNull();
   });
 
   it("marks where each measurement is critical, from the catalog", async () => {

@@ -40,20 +40,21 @@ export function fmtMoney(
 }
 
 export const DIMENSION_LABEL: Record<string, string> = {
+  chest: "Chest",
   waist: "Waist",
-  inseam: "Inseam",
   hips: "Hips",
+  shoulders: "Shoulders",
+  inseam: "Inseam",
+  sleeve: "Sleeve",
 };
 export const DIMENSION_NOUN: Record<string, string> = {
+  chest: "chest",
   waist: "waist",
+  hips: "hips",
+  shoulders: "shoulders",
   inseam: "inseam",
-  hips: "hip",
+  sleeve: "sleeve",
 };
-
-export function joinList(items: string[]): string {
-  if (items.length <= 1) return items[0] ?? "";
-  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
-}
 
 export function capitalize(text: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);

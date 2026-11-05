@@ -118,7 +118,7 @@ describe("Analyzer", () => {
         created_at: "2026-11-05T00:00:00Z",
         product_name: "Demo Relaxed Sweater",
         image_url: null,
-        verdict: null,
+        fit_outcome: "match",
         selected_size: "M",
         total_cents: 4900,
         currency: "EUR",

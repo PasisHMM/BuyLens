@@ -8,25 +8,18 @@ import { useApp } from "@/app/providers";
 import {
   Button,
   ButtonLink,
-  cx,
+  Callout,
+  Card,
   ProductImage,
-  VERDICT_STYLE,
-  VerdictBadge,
 } from "@/components/ui/primitives";
-import type {
-  CheckResult,
-  CheckView,
-  Feedback,
-  OptionOut,
-  Verdict,
-} from "@/lib/api";
+import type { CheckView, Feedback, OptionOut, Unit } from "@/lib/api";
 import { DIMENSION_NOUN, fmtMoney } from "@/lib/format";
 import { FitCheckCard, PriceCheckCard, SellerRiskCard } from "./cards";
-import { DemoResultView } from "./DemoResultView";
+import { DemoSizeChart } from "./DemoSizeChart";
 import { FeedbackDialog, feedbackSummary } from "./FeedbackDialog";
 import { ViewAtRetailer } from "./ViewAtRetailer";
 
-const VERDICTS: Verdict[] = ["BUY", "CONSIDER", "SKIP"];
+const MODE_LABEL = { quick_fit: "Quick Fit", personal_fit: "Personal Fit" };
 
 function checkedAgo(iso: string | null): string {
   if (!iso) return "";
@@ -39,51 +32,172 @@ function checkedAgo(iso: string | null): string {
     : `Checked ${new Date(iso).toLocaleDateString("en-US")}`;
 }
 
-function shortSeller(option: OptionOut, brand: string | null): string {
-  return option.seller_risk.is_official && brand
-    ? brand
-    : option.seller.name.split(":")[0];
-}
-
-/** The dimension feedback asks about: the one we couldn't confirm, else one that looked off. */
+/** The measurement feedback asks about: one we couldn't compare, else one that wasn't inside. */
 function feedbackDimension(option: OptionOut): string | null {
+  const rows = option.fit_check.rows ?? [];
   const row =
-    option.fit_check.rows.find((r) => r.match === "missing") ??
-    option.fit_check.rows.find((r) => r.match !== "ok") ??
+    rows.find((r) => r.status === "missing") ??
+    rows.find((r) => r.status !== "inside") ??
     null;
-  return row ? row.dimension : null;
+  return row ? (DIMENSION_NOUN[row.dimension] ?? row.dimension) : null;
 }
 
-function decisionHint(
-  result: CheckResult,
-  option: OptionOut,
-  seller: string,
-): string {
-  const missing = option.fit_check.rows
-    .filter((r) => r.match === "missing")
-    .map((r) => DIMENSION_NOUN[r.dimension]);
-  const freeReturns =
-    option.seller_risk.return_policy.verified &&
-    option.seller_risk.return_policy.free;
-  if (result.verdict === "SKIP")
-    return result.options.length > 1
-      ? "We’d pass on this one. Compare the other options above, or check another product."
-      : "We’d pass on this one. Check another product instead.";
-  if (result.verdict === "BUY")
-    return freeReturns
-      ? "Everything checks out, and returns are free if it doesn’t work out."
-      : "Everything checks out.";
-  if (missing.length)
-    return `Ask ${seller} for the ${missing.join(" and ")} measurement${freeReturns ? ", or use the free return window" : ""}.`;
-  return "Look over the trade-offs above before you order.";
+function headerEyebrow({ product, demo }: CheckView): string {
+  if (demo) return `${demo.shop_name} · demo shop`;
+  return [product?.brand, product?.category].filter(Boolean).join(" · ");
+}
+
+function headerFacts({ product, demo, fit_mode_used: mode }: CheckView): string {
+  const facts: (string | null | undefined)[] = [mode && MODE_LABEL[mode]];
+  if (demo) facts.unshift(product?.category);
+  if (demo?.sample_label) facts.push(`Sample: ${demo.sample_label}`);
+  if (demo) facts.push(`Listed sizes: ${demo.sold_sizes.join(", ")}`);
+  return facts.filter(Boolean).join(" · ");
+}
+
+function ProductHeader({ result }: { result: CheckView }) {
+  const { product } = result;
+  return (
+    <div className="mt-7 flex gap-4 sm:gap-6">
+      <ProductImage name={product?.name ?? "Product"} />
+      <div className="min-w-0">
+        <p className="eyebrow text-muted">{headerEyebrow(result)}</p>
+        <h1 className="mt-2 font-serif text-[26px] leading-tight sm:mt-3 sm:text-[40px]">
+          {product?.name}
+        </h1>
+        <p className="mt-2 text-sm text-muted">{headerFacts(result)}</p>
+      </div>
+    </div>
+  );
+}
+
+function OptionSection({
+  option,
+  unit,
+  brand,
+}: {
+  option: OptionOut;
+  unit: Unit;
+  brand: string | null;
+}) {
+  return (
+    <article className="mt-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <p className="text-sm">
+          <span className="font-semibold">
+            {option.seller.name} ·{" "}
+            <span className="num">
+              {fmtMoney(option.total_cents, option.price_check.currency)}
+            </span>{" "}
+            total
+          </span>
+          <span className="mt-1 block text-xs text-muted">
+            {option.summary}
+          </span>
+        </p>
+        <ViewAtRetailer
+          offer={{
+            listingId: option.listing_id,
+            retailerId: option.seller.domain,
+            retailerName: option.seller.name,
+            url: option.url,
+          }}
+        />
+      </div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-3">
+        <FitCheckCard fit={option.fit_check} unit={unit} />
+        <PriceCheckCard price={option.price_check} />
+        <SellerRiskCard risk={option.seller_risk} brand={brand} />
+      </div>
+    </article>
+  );
+}
+
+function OptionGroup({
+  title,
+  hint,
+  options,
+  unit,
+  brand,
+}: {
+  title: string;
+  hint: string;
+  options: OptionOut[];
+  unit: Unit;
+  brand: string | null;
+}) {
+  if (!options.length) return null;
+  return (
+    <section className="mt-8">
+      <h2 className="text-xl sm:text-2xl">{title}</h2>
+      <p className="mt-1 text-xs text-muted">{hint}</p>
+      {options.map((o) => (
+        <OptionSection key={o.rank} option={o} unit={unit} brand={brand} />
+      ))}
+    </section>
+  );
+}
+
+/** Mismatches are out of the list above. This note says why, and offers no way to buy them. */
+function HiddenMismatches({
+  count,
+  reasons = [],
+}: CheckView["hidden_mismatches"]) {
+  if (!count) return null;
+  const options = count === 1 ? "1 option" : `${count} options`;
+  return (
+    <details className="mt-8 rounded-xl bg-subtle px-5 py-4 text-sm">
+      <summary className="cursor-pointer">
+        {options} hidden due to critical measurement mismatches{" "}
+        <span className="underline underline-offset-4">View</span>
+      </summary>
+      <ul className="mt-3 space-y-2 text-muted">
+        {reasons.map((r) => (
+          <li key={r}>{r}</li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
+function FeedbackSection({
+  feedback,
+  dimension,
+  onOpen,
+}: {
+  feedback: Feedback | null;
+  dimension: string | null;
+  onOpen: () => void;
+}) {
+  if (feedback)
+    return (
+      <section className="mt-8 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <p className="text-sm text-muted">
+          {feedbackSummary(feedback, dimension)} Saved for future checks.
+        </p>
+        <ButtonLink href="/" variant="secondary">
+          Check another product
+        </ButtonLink>
+      </section>
+    );
+  return (
+    <section className="mt-8">
+      <Button variant="secondary" onClick={onOpen}>
+        Did you buy this item?
+      </Button>
+    </section>
+  );
+}
+
+function isFinished(result: CheckView | null): result is CheckView & {
+  product: NonNullable<CheckView["product"]>;
+} {
+  return result !== null && result.status === "done" && !!result.product;
 }
 
 export function CheckResultView({ id }: { id: string }) {
   const { api, toast } = useApp();
-  const [result, setResult] = useState<CheckView | null | undefined>(
-    undefined,
-  );
-  const [selected, setSelected] = useState(1);
+  const [result, setResult] = useState<CheckView | null | undefined>(undefined);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
 
@@ -93,48 +207,17 @@ export function CheckResultView({ id }: { id: string }) {
   }, [api, id]);
 
   if (result === undefined) return <ResultSkeleton />;
-  if (result?.demo) return <DemoResultView result={result} />;
-  if (
-    result === null ||
-    result.status !== "done" ||
-    !result.verdict ||
-    !result.product
-  ) {
-    return <ResultUnavailable result={result} />;
-  }
+  if (!isFinished(result)) return <ResultUnavailable result={result} />;
 
-  const product = result.product;
-  const verdict = result.verdict;
-  const options = result.options;
-  const option = options.find((o) => o.rank === selected) ?? options[0];
-  const others = options.filter((o) => o.rank !== option.rank);
-  const seller = shortSeller(option, product.brand);
-  const attrs = product.attributes as Record<string, unknown>;
-  const facts = [
-    attrs.wash as string | undefined,
-    result.selected_size ?? undefined,
-    attrs.stretch === false
-      ? "Non-stretch"
-      : attrs.stretch === true
-        ? "Stretch"
-        : undefined,
-  ].filter(Boolean);
-  const vs = VERDICT_STYLE[verdict];
-  const dimension = feedbackDimension(
-    options.find((o) => o.rank === (feedback?.option_rank ?? selected)) ??
-      option,
-  );
-  const dimensionNoun = dimension
-    ? dimension === "hips"
-      ? "hips"
-      : DIMENSION_NOUN[dimension]
-    : null;
+  const { product, unit, matches, uncertain, hidden_mismatches, demo } = result;
+  const visible = [...matches, ...uncertain];
+  const first = visible[0];
 
   async function saveFeedback(f: Feedback) {
     await api.submitFeedback(id, f);
     setFeedback(f);
     setFeedbackOpen(false);
-    toast.show("Saved! Future verdicts updated.");
+    toast.show("Saved! Thanks for telling us.");
   }
 
   return (
@@ -149,208 +232,54 @@ export function CheckResultView({ id }: { id: string }) {
         <span>{checkedAgo(result.completed_at)}</span>
       </div>
 
-      {/* Product header */}
-      <div className="mt-7 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex gap-4 sm:gap-6">
-          <ProductImage name={product.name} />
-          <div className="min-w-0">
-            <p className="eyebrow text-muted">
-              {[product.brand, product.category].filter(Boolean).join(" · ")}
-            </p>
-            <h1 className="mt-2 font-serif text-[26px] leading-tight sm:mt-3 sm:text-[40px]">
-              {product.name}
-            </h1>
-            <p className="mt-2 text-sm text-muted">{facts.join(" · ")}</p>
-            {typeof attrs.source === "string" && (
-              <p className="mt-2 hidden text-xs text-muted sm:block">
-                {attrs.source}
-              </p>
-            )}
-          </div>
-        </div>
-        <div className="lg:text-right">
-          <p className="eyebrow hidden font-normal text-muted lg:block">
-            Our verdict scale
-          </p>
-          <div className="mt-2 flex gap-2" aria-label="Verdict scale">
-            {VERDICTS.map((v) => (
-              <VerdictBadge
-                key={v}
-                verdict={v}
-                className={v === verdict ? "ring-1 ring-current" : ""}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
+      <ProductHeader result={result} />
 
-      {/* Verdict banner */}
-      <section
-        className={cx(
-          "mt-6 rounded-[var(--radius-card)] px-6 py-6 sm:px-7 sm:py-7 lg:flex lg:gap-14",
-          vs.bg,
-        )}
-      >
-        <div className="shrink-0">
-          <p className={cx("eyebrow font-normal", vs.text)}>Your verdict</p>
-          <p
-            className={cx(
-              "mt-1.5 text-[40px] leading-none font-light tracking-wide",
-              vs.text,
-            )}
-          >
-            {verdict}
-          </p>
+      {!first && (
+        <div className="mt-8">
+          <Callout tone="negative" title="No options to recommend">
+            Every option has a critical measurement mismatch.
+          </Callout>
         </div>
-        <div className="mt-5 lg:mt-1">
-          <h2 className="text-lg sm:text-xl">{result.headline}</h2>
-          <p className="mt-2 text-sm leading-relaxed">{result.explanation}</p>
-        </div>
-      </section>
+      )}
 
-      {/* Options */}
-      <section className="mt-8">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
-          <h2 className="text-xl sm:text-2xl">
-            Your{" "}
-            {options.length === 1
-              ? "best option"
-              : `${options.length} best options`}
-          </h2>
-          <p className="text-xs text-muted">
-            Ranked by overall value, not just lowest price.
-          </p>
-        </div>
+      <OptionGroup
+        title="Matches"
+        hint="One size clearly fits, with nothing known against it."
+        options={matches}
+        unit={unit}
+        brand={product.brand}
+      />
+      <OptionGroup
+        title="Check before buying"
+        hint="Between sizes, an additional concern, or not enough evidence."
+        options={uncertain}
+        unit={unit}
+        brand={product.brand}
+      />
+      <HiddenMismatches {...hidden_mismatches} />
 
-        {options.length > 1 && (
-          <div
-            role="tablist"
-            aria-label="Options"
-            className="mt-4 grid gap-1 rounded-xl bg-subtle p-1"
-            style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}
-          >
-            {options.map((o) => (
-              <button
-                key={o.rank}
-                role="tab"
-                type="button"
-                aria-selected={o.rank === option.rank}
-                onClick={() => setSelected(o.rank)}
-                className={cx(
-                  "h-11 rounded-lg text-sm transition-colors",
-                  o.rank === option.rank
-                    ? "border border-line bg-frame font-semibold"
-                    : "text-muted hover:text-ink",
-                )}
-              >
-                Option {o.rank}
-                {o.rank === 1 && " (Best)"}
-              </button>
-            ))}
-          </div>
-        )}
+      {first && (
+        <FeedbackSection
+          feedback={feedback}
+          dimension={feedbackDimension(first)}
+          onOpen={() => setFeedbackOpen(true)}
+        />
+      )}
 
-        <p className="mt-4 text-sm sm:flex sm:gap-6">
-          <span className="font-semibold">
-            {option.seller.name} ·{" "}
-            <span className="num">
-              {fmtMoney(option.total_cents, option.price_check.currency)}
-            </span>{" "}
-            total
-          </span>
-          <span className="mt-1 block text-xs text-muted sm:mt-0 sm:self-center">
-            {option.summary}
-          </span>
-        </p>
-
-        <div role="tabpanel" className="mt-6 grid gap-4 lg:grid-cols-3">
-          <PriceCheckCard price={option.price_check} />
-          <FitCheckCard fit={option.fit_check} unit={result.unit} />
-          <SellerRiskCard risk={option.seller_risk} brand={product.brand} />
-        </div>
-
-        {others.length > 0 && (
-          <div className="mt-6 flex flex-col gap-2 rounded-xl bg-subtle px-5 py-4 text-sm lg:flex-row lg:items-center lg:gap-6">
-            <span className="eyebrow font-normal text-muted">
-              Also compared
-            </span>
-            {others.map((o) => (
-              <button
-                key={o.rank}
-                type="button"
-                onClick={() => setSelected(o.rank)}
-                className="text-left hover:underline lg:flex-1"
-              >
-                Option {o.rank} · {o.seller.name.split(":")[0]} ·{" "}
-                <span className="num">
-                  {fmtMoney(o.total_cents, o.price_check.currency)}
-                </span>{" "}
-                total · {o.summary.replace(/\.$/, "")}
-              </button>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Decision */}
-      <section className="mt-8 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          {feedback ? (
-            <>
-              <p className="text-[15px]">
-                Thanks. Your experience makes the next check better.
-              </p>
-              <p className="mt-1 text-sm text-muted">
-                {feedbackSummary(feedback, dimensionNoun)} Saved for future
-                checks.
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="text-[15px]">Make the call with confidence.</p>
-              <p className="mt-1 text-sm text-muted">
-                {decisionHint(result, option, seller)}
-              </p>
-            </>
-          )}
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          {feedback ? (
-            <ButtonLink href="/" variant="secondary">
-              Check another product
-            </ButtonLink>
-          ) : (
-            <Button variant="secondary" onClick={() => setFeedbackOpen(true)}>
-              Did you buy this item?
-            </Button>
-          )}
-          <ViewAtRetailer
-            offer={{
-              listingId: option.listing_id,
-              retailerId: option.seller.domain,
-              retailerName: option.seller.name,
-              url: option.url,
-            }}
-          />
-        </div>
-      </section>
-
-      {result.why_not && (result.why_not.buy || result.why_not.skip) && (
-        <p className="mt-6 text-[11px] leading-relaxed text-muted">
-          {result.why_not.buy && <>Why not BUY? {result.why_not.buy} </>}
-          {result.why_not.skip && <>Why not SKIP? {result.why_not.skip} </>}
-          Recommendations aren’t fit guarantees.
-        </p>
+      {demo && (
+        <Card className="mt-8 p-6">
+          <DemoSizeChart chart={demo.chart} />
+        </Card>
       )}
 
       {/* Mounted only while open, so every opening starts blank. */}
-      {feedbackOpen && (
+      {feedbackOpen && first && (
         <FeedbackDialog
           open
           onOpenChange={setFeedbackOpen}
-          optionRank={option.rank}
-          dimension={dimensionNoun}
-          subtitle={`${product.brand ? `${product.brand} ` : ""}${product.name}${result.selected_size ? ` ${result.selected_size}` : ""} · ${option.seller.name} · ${fmtMoney(option.total_cents, option.price_check.currency)}`}
+          optionRank={first.rank}
+          dimension={feedbackDimension(first)}
+          subtitle={`${product.name} · ${first.seller.name} · ${fmtMoney(first.total_cents, first.price_check.currency)}`}
           onSave={saveFeedback}
         />
       )}
@@ -373,7 +302,6 @@ export function ResultSkeleton() {
           <div className="h-9 w-2/3 rounded bg-subtle" />
         </div>
       </div>
-      <div className="mt-6 h-32 rounded-xl bg-subtle" />
       <div className="mt-8 grid gap-4 lg:grid-cols-3">
         {[0, 1, 2].map((i) => (
           <div key={i} className="h-80 rounded-xl bg-subtle" />
@@ -383,7 +311,7 @@ export function ResultSkeleton() {
   );
 }
 
-function ResultUnavailable({ result }: { result: CheckResult | null }) {
+function ResultUnavailable({ result }: { result: CheckView | null }) {
   const message =
     result === null
       ? "We couldn’t find this check. It may have been made in another browser."
@@ -394,7 +322,7 @@ function ResultUnavailable({ result }: { result: CheckResult | null }) {
           : "This check is still running.";
   return (
     <div className="mx-auto max-w-[640px] px-4 py-20 text-center">
-      <h1 className="font-serif text-4xl">No verdict here.</h1>
+      <h1 className="font-serif text-4xl">No result here.</h1>
       <p className="mt-4 text-muted">{message}</p>
       <ButtonLink href="/" className="mt-8">
         Check a product

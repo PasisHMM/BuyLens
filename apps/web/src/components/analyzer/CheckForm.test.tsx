@@ -290,6 +290,27 @@ describe("Personal Fit", () => {
     expect(app.api.saveProfile).not.toHaveBeenCalled();
   });
 
+  it("offers sample measurements that run without saving anything", async () => {
+    render(<CheckForm onStarted={onStarted} />);
+    fireEvent.click(radio("Fit mode", "personal_fit"));
+    fireEvent.click(radio("Measurements to compare", "on-the-s-m-line"));
+    setLink(SWEATER);
+    analyze();
+    await waitFor(() => expect(onStarted).toHaveBeenCalled());
+    expect(app.api.saveProfile).not.toHaveBeenCalled();
+    expect(app.api.createCheck).toHaveBeenCalledWith(SWEATER, {
+      shopId: "merchandizable",
+      sampleId: "on-the-s-m-line",
+    });
+  });
+
+  it("offers no sample measurements in live mode", () => {
+    app.api.mode = "live";
+    app.profile = measured();
+    render(<CheckForm onStarted={onStarted} />);
+    expect(screen.queryByRole("group", { name: "Measurements to compare" })).toBeNull();
+  });
+
   it("keeps chosen sizes when switching to Personal Fit and back", () => {
     render(<CheckForm onStarted={onStarted} />);
     fireEvent.click(radio("Tops", "S"));

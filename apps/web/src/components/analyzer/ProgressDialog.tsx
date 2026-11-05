@@ -124,7 +124,7 @@ export function ProgressDialog({
               <Dialog.Title className="mt-6 font-serif text-[30px] leading-tight sm:text-[34px]">
                 We couldn’t finish this check.
               </Dialog.Title>
-              <Dialog.Description className="mt-4 flex items-start gap-2 text-sm text-skip">
+              <Dialog.Description className="mt-4 flex items-start gap-2 text-sm text-negative">
                 <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />{" "}
                 {failure}
               </Dialog.Description>

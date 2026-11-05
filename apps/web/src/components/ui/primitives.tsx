@@ -2,7 +2,7 @@ import { ImageIcon } from "lucide-react";
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 
-import type { Verdict } from "@/lib/api";
+import type { FitOutcome } from "@/lib/api";
 
 export function cx(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(" ");
@@ -55,30 +55,19 @@ export function ButtonLink({
   );
 }
 
-export const VERDICT_STYLE: Record<
-  Verdict,
-  { text: string; bg: string; label: string }
-> = {
-  BUY: { text: "text-buy", bg: "bg-buy-bg", label: "Buy" },
-  CONSIDER: { text: "text-consider", bg: "bg-consider-bg", label: "Consider" },
-  SKIP: { text: "text-skip", bg: "bg-skip-bg", label: "Skip" },
+const OUTCOME_STYLE: Record<FitOutcome, { cls: string; label: string }> = {
+  match: { cls: "bg-positive-bg text-positive", label: "MATCH" },
+  uncertain: { cls: "bg-caution-bg text-caution", label: "UNCERTAIN" },
+  mismatch: { cls: "bg-negative-bg text-negative", label: "MISMATCH" },
 };
 
-export function VerdictBadge({
-  verdict,
-  className,
-}: {
-  verdict: Verdict;
-  className?: string;
-}) {
-  const s = VERDICT_STYLE[verdict];
+export function OutcomeBadge({ outcome }: { outcome: FitOutcome }) {
+  const s = OUTCOME_STYLE[outcome];
   return (
     <span
       className={cx(
         "inline-flex items-center rounded-full px-3 py-1 text-xs font-medium",
-        s.bg,
-        s.text,
-        className,
+        s.cls,
       )}
     >
       {s.label}
@@ -110,14 +99,14 @@ export function Callout({
   title,
   children,
 }: {
-  tone: "buy" | "consider" | "skip";
+  tone: "positive" | "caution" | "negative";
   title: string;
   children?: ReactNode;
 }) {
   const style = {
-    buy: "bg-buy-bg text-buy",
-    consider: "bg-consider-bg text-consider",
-    skip: "bg-skip-bg text-skip",
+    positive: "bg-positive-bg text-positive",
+    caution: "bg-caution-bg text-caution",
+    negative: "bg-negative-bg text-negative",
   }[tone];
   return (
     <div className={cx("rounded-lg px-4 py-3", style)}>

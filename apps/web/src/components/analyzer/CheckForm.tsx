@@ -16,7 +16,11 @@ import {
   type QuickSize,
 } from "@/lib/api";
 import catalog from "@/lib/api/mock/catalog.json";
-import { DEMO_CHART, DEMO_PRODUCTS } from "@/lib/api/mock/demo";
+import {
+  DEMO_CHART,
+  DEMO_PRODUCTS,
+  PERSONAL_SAMPLES,
+} from "@/lib/api/mock/demo";
 import { capitalize, fmtLengthWithUnit } from "@/lib/format";
 import {
   activeShop,
@@ -39,6 +43,12 @@ const SIZE_ROWS = [
   { category: "bottoms", legend: "Bottoms" },
 ] as const;
 type Sizes = Partial<Record<"tops" | "bottoms", QuickSize>>;
+
+const OWN = "own";
+const SAMPLE_CHIPS = [
+  { value: OWN, label: "My measurements" },
+  ...PERSONAL_SAMPLES.map((s) => ({ value: s.id, label: s.label })),
+];
 
 const SHOP_CHIPS = SHOPS.map((s) =>
   s.status === "active"
@@ -71,25 +81,29 @@ function profileBody(mode: FitMode, sizes: Sizes): ProfileIn {
     : { fit_mode: mode, size_system: "eu", quick_sizes: sizes };
 }
 
+function fitError(
+  mode: FitMode,
+  sizes: Sizes,
+  profile: Profile | null,
+  sample: string,
+): string | null {
+  if (mode === "quick_fit")
+    return Object.keys(sizes).length ? null : "Pick your Tops or Bottoms size.";
+  return sample === OWN && !profile?.measurements.length
+    ? "Add your measurements first, or use Quick Fit."
+    : null;
+}
+
 /** What stops this form from being submitted, in the order a person would fix it. */
 function formError(
   api: ApiClient,
   url: string,
   shop: Shop,
-  mode: FitMode,
-  sizes: Sizes,
-  profile: Profile | null,
+  fit: string | null,
 ): string | null {
   if (!url) return "Paste a product link first.";
-  if (api.mode === "mock") {
-    const error = shopError(url, shop);
-    if (error) return error;
-  }
-  if (mode === "quick_fit" && !Object.keys(sizes).length)
-    return "Pick your Tops or Bottoms size.";
-  if (mode === "personal_fit" && !profile?.measurements.length)
-    return "Add your measurements first, or use Quick Fit.";
-  return null;
+  const linkProblem = api.mode === "mock" ? shopError(url, shop) : null;
+  return linkProblem ?? fit;
 }
 
 function ShopChoice({
@@ -139,7 +153,7 @@ function LinkField({
       <div
         className={cx(
           "flex h-12 w-full items-center gap-3 rounded-lg border bg-frame px-4 focus-within:border-ink sm:h-14",
-          invalid ? "border-skip" : "border-line",
+          invalid ? "border-negative" : "border-line",
         )}
       >
         <ArrowUpRight className="size-4 shrink-0 text-muted" aria-hidden />
@@ -239,6 +253,56 @@ function PersonalSummary({ profile }: { profile: Profile | null }) {
   );
 }
 
+function SampleChoice({
+  sample,
+  onChange,
+}: {
+  sample: string;
+  onChange: (sample: string) => void;
+}) {
+  return (
+    <ChipGroup
+      legend="Measurements to compare"
+      name="personal-sample"
+      chips={SAMPLE_CHIPS}
+      value={sample}
+      onChange={onChange}
+    />
+  );
+}
+
+function PersonalChoice({
+  showSamples,
+  sample,
+  profile,
+  onSample,
+}: {
+  showSamples: boolean;
+  sample: string;
+  profile: Profile | null;
+  onSample: (sample: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      {showSamples && <SampleChoice sample={sample} onChange={onSample} />}
+      <PersonalSummary profile={profile} />
+    </div>
+  );
+}
+
+function chosenSample(mode: FitMode, sample: string): string | undefined {
+  return mode === "personal_fit" && sample !== OWN ? sample : undefined;
+}
+
+function checkOptions(
+  api: ApiClient,
+  shop: Shop,
+  sampleId: string | undefined,
+): { shopId?: string; sampleId?: string } {
+  if (api.mode !== "mock") return {};
+  return sampleId ? { shopId: shop.id, sampleId } : { shopId: shop.id };
+}
+
 function initialSizes(profile: Profile | null): Sizes {
   const { tops, bottoms } = profile?.quick_sizes ?? {};
   return { ...(tops && { tops }), ...(bottoms && { bottoms }) };
@@ -270,7 +334,7 @@ function SubmitRow({
       <p
         id="product-url-help"
         role={error ? "alert" : undefined}
-        className={cx("mt-3 text-xs", error ? "text-skip" : "text-muted")}
+        className={cx("mt-3 text-xs", error ? "text-negative" : "text-muted")}
       >
         {error ?? help}
       </p>
@@ -288,6 +352,7 @@ export function CheckForm({
   const [shop, setShop] = useState<Shop>(readSelectedShop);
   const [mode, setMode] = useState<FitMode>(profile?.fit_mode ?? "quick_fit");
   const [sizes, setSizes] = useState<Sizes>(() => initialSizes(profile));
+  const [sample, setSample] = useState(OWN);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const isMock = api.mode === "mock";
@@ -302,15 +367,26 @@ export function CheckForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const link = url.trim();
-    const problem = formError(api, link, shop, mode, sizes, profile);
+    const problem = formError(
+      api,
+      link,
+      shop,
+      fitError(mode, sizes, profile, sample),
+    );
     setError(problem);
     if (problem) return;
     setSubmitting(true);
     try {
-      await api.saveProfile(profileBody(mode, sizes));
-      await reloadProfile();
-      const options = isMock ? { shopId: shop.id } : {};
-      const { id } = await api.createCheck(link, options);
+      const sampleId = chosenSample(mode, sample);
+      // Sample measurements only try the comparison: they never replace what someone saved.
+      if (!sampleId) {
+        await api.saveProfile(profileBody(mode, sizes));
+        await reloadProfile();
+      }
+      const { id } = await api.createCheck(
+        link,
+        checkOptions(api, shop, sampleId),
+      );
       onStarted(id, link);
       setUrl("");
     } catch (err) {
@@ -346,7 +422,12 @@ export function CheckForm({
       {mode === "quick_fit" ? (
         <SizeChoice sizes={sizes} onChange={setSizes} />
       ) : (
-        <PersonalSummary profile={profile} />
+        <PersonalChoice
+          showSamples={isMock}
+          sample={sample}
+          profile={profile}
+          onSample={setSample}
+        />
       )}
 
       <SubmitRow submitting={submitting} error={error} help={HELP[api.mode]} />

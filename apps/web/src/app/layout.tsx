@@ -13,7 +13,7 @@ const lora = Lora({ subsets: ["latin"], variable: "--font-lora" });
 export const metadata: Metadata = {
   title: "Buy Lens: a second opinion before you buy",
   description:
-    "Paste a clothing link and get a BUY, CONSIDER or SKIP verdict based on your exact measurements.",
+    "Paste a clothing link and see how it fits, what it costs and how reliable the seller is, based on your measurements.",
 };
 
 export default function RootLayout({

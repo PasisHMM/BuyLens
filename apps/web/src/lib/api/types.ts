@@ -1,5 +1,4 @@
 /** App-facing API types. Response shapes come from the backend's OpenAPI contract (schema.d.ts). */
-import type { Offer } from "../outbound";
 import type { components } from "./schema";
 
 type Schemas = components["schemas"];
@@ -14,8 +13,8 @@ export type OptionOut = Schemas["OptionOut"];
 export type PriceCheck = Schemas["PriceCheck"];
 export type FitCheck = Schemas["FitCheck"];
 export type FitRow = Schemas["FitRow"];
+export type FitOutcome = Schemas["FitOutcome"];
 export type SellerRisk = Schemas["SellerRisk"];
-export type Verdict = "BUY" | "CONSIDER" | "SKIP";
 
 export type Catalog = Schemas["Catalog"];
 export type FitMode = Schemas["FitMode"];
@@ -42,24 +41,14 @@ export type DemoChart = {
     hips: DemoChartRange;
   }[];
 };
-export type DemoFit = {
-  mode: FitMode;
-  outcome: string;
-  size_label: string | null;
-  reasons: string[];
+export type CheckView = CheckResult & {
+  demo?: {
+    shop_name: string;
+    sold_sizes: string[];
+    chart: DemoChart;
+    sample_label: string | null;
+  };
 };
-export type DemoCheck = {
-  shop_id: string;
-  shop_name: string;
-  product_type: string;
-  sold_sizes: string[];
-  price_cents: number;
-  currency: string;
-  offer: Offer;
-  fit: DemoFit;
-  chart: DemoChart;
-};
-export type CheckView = CheckResult & { demo?: DemoCheck };
 
 /** Server-Sent Event payloads (not part of OpenAPI). Mirrors app/pipeline/progress.py. */
 export type StepId = "product" | "prices" | "fit" | "seller";
@@ -75,13 +64,13 @@ export type ProgressEvent = {
 };
 
 /** Post-purchase feedback (backend endpoint arrives in Phase 4). */
-export type FitOutcome = "too_tight" | "fits_well" | "too_loose";
+export type FitFeedback = "too_tight" | "fits_well" | "too_loose";
 export type HeldBackReason = "price" | "fit_concern" | "seller_risk";
 export type Feedback =
   | {
       purchased: true;
       option_rank: number;
-      fit: FitOutcome;
+      fit: FitFeedback;
       fit_dimension: string | null;
     }
   | { purchased: false; option_rank: number; reasons: HeldBackReason[] };
@@ -106,7 +95,10 @@ export interface ApiClient {
   saveProfile(profile: ProfileIn): Promise<void>;
   searchBrands(query?: string, limit?: number): Promise<Brand[]>;
   getMeasurements(): Promise<Catalog>;
-  createCheck(url: string, options?: { shopId?: string }): Promise<{ id: string }>;
+  createCheck(
+    url: string,
+    options?: { shopId?: string; sampleId?: string },
+  ): Promise<{ id: string }>;
   /** Streams progress for a check; returns an unsubscribe function. */
   subscribe(id: string, onEvent: (event: ProgressEvent) => void): () => void;
   cancelCheck(id: string): Promise<void>;

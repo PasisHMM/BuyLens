@@ -30,6 +30,7 @@ const HOW_TO: Partial<Record<Dim, string>> = {
   hips: "Around the fullest part of your hips.",
   shoulders: "Across your back, shoulder to shoulder.",
   inseam: "From inner leg to ankle.",
+  sleeve: "From shoulder to wrist.",
 };
 
 function fieldsFrom(catalog: Catalog): Field[] {
@@ -179,7 +180,7 @@ function SaveRow({ saving, error }: { saving: boolean; error: string | null }) {
   return (
     <>
       {error && (
-        <p role="alert" className="mt-6 text-sm text-skip">
+        <p role="alert" className="mt-6 text-sm text-negative">
           {error}
         </p>
       )}
@@ -364,7 +365,7 @@ function MeasurementField({
       <div
         className={cx(
           "mt-2 flex h-[60px] items-center rounded-lg border bg-frame px-4 focus-within:border-ink",
-          error ? "border-skip" : "border-line",
+          error ? "border-negative" : "border-line",
         )}
       >
         <input
@@ -381,7 +382,7 @@ function MeasurementField({
       </div>
       <p
         id={`${id}-help`}
-        className={cx("mt-2 text-xs", error ? "text-skip" : "text-muted")}
+        className={cx("mt-2 text-xs", error ? "text-negative" : "text-muted")}
       >
         {error ?? field.help}
       </p>

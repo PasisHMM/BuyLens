@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProfileIn } from "../types";
 import { MockApiClient } from "./client";
-import { BRANDS } from "./scenarios";
+import { BRANDS } from "./brands";
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -76,7 +76,7 @@ describe("MockApiClient createCheck", () => {
   it("asks for measurements before the first check", async () => {
     useStorage();
     await expectRejection(
-      new MockApiClient().createCheck("https://www.levi.com/p/501"),
+      new MockApiClient().createCheck(DEMO_SWEATER),
       { status: 409, message: "Save your measurements first." },
     );
   });
@@ -85,21 +85,20 @@ describe("MockApiClient createCheck", () => {
     useStorage();
     const api = new MockApiClient();
     await settle(
-      api.saveProfile({ fit_mode: "quick_fit", quick_sizes: { tops: "S" } }),
+      api.saveProfile({ fit_mode: "quick_fit", quick_sizes: { bottoms: "S" } }),
     );
     const { id } = await settle(
-      api.createCheck(DEMO_SWEATER, { shopId: "merchandizable" }),
+      api.createCheck(DEMO_TROUSERS, { shopId: "merchandizable" }),
     );
     await vi.runAllTimersAsync();
     const result = await settle(api.getCheck(id));
     expect(result?.status).toBe("done");
-    expect(result?.verdict).toBeNull();
-    expect(result?.demo?.shop_id).toBe("merchandizable");
-    expect(result?.demo?.fit.outcome).toBe("match");
-    expect(result?.demo?.fit.size_label).toBe("S");
+    expect(result?.demo?.shop_name).toBe("Merchandizable");
+    expect(result?.matches[0].fit_check.outcome).toBe("match");
+    expect(result?.selected_size).toBe("S");
   });
 
-  it("lists a finished demo check with its EUR price", async () => {
+  it("lists a finished demo check with its EUR price and outcome", async () => {
     useStorage();
     const api = new MockApiClient();
     await settle(
@@ -111,39 +110,91 @@ describe("MockApiClient createCheck", () => {
       product_name: "Demo Relaxed Sweater",
       total_cents: 4900,
       currency: "EUR",
-      verdict: null,
+      fit_outcome: "uncertain",
     });
   });
 
-  it("rejects an unknown page on the demo shop's host", async () => {
+  it("lists a hidden check as a mismatch, with no price to recommend", async () => {
+    useStorage();
+    const api = new MockApiClient();
+    await settle(
+      api.saveProfile({ fit_mode: "quick_fit", quick_sizes: { bottoms: "XL" } }),
+    );
+    await settle(api.createCheck(DEMO_PETITE));
+    await vi.runAllTimersAsync();
+    expect((await settle(api.recentChecks(1)))[0]).toMatchObject({
+      fit_outcome: "mismatch",
+      total_cents: null,
+      selected_size: null,
+    });
+  });
+
+  it("runs sample measurements without a saved profile, and saves nothing", async () => {
+    useStorage();
+    const api = new MockApiClient();
+    const { id } = await settle(
+      api.createCheck(DEMO_TROUSERS, { sampleId: "inside-size-s" }),
+    );
+    await vi.runAllTimersAsync();
+    const result = await settle(api.getCheck(id));
+    expect(result?.fit_mode_used).toBe("personal_fit");
+    expect(result?.matches[0].fit_check.size_label).toBe("S");
+    expect(await settle(api.getProfile())).toBeNull();
+  });
+
+  it("ignores an unknown sample", async () => {
+    useStorage();
+    await expectRejection(
+      new MockApiClient().createCheck(DEMO_TROUSERS, { sampleId: "nope" }),
+      { status: 409 },
+    );
+  });
+
+  it.each([
+    ["https://merchandizable.example/p/unknown", "no sample data"],
+    ["https://www.levi.com/p/501", "Levi's is coming soon."],
+    ["https://elsewhere.test/p/1", "We don't support this store yet."],
+  ])("rejects %s", async (url, message) => {
+    useStorage();
+    await expectRejection(new MockApiClient().createCheck(url), {
+      status: 422,
+      message: expect.stringContaining(message),
+    });
+  });
+
+  it("can be cancelled while running, and not afterwards", async () => {
     useStorage();
     const api = new MockApiClient();
     await settle(
       api.saveProfile({ fit_mode: "quick_fit", quick_sizes: { tops: "S" } }),
     );
-    await expectRejection(
-      api.createCheck("https://merchandizable.example/p/unknown"),
-      { status: 422 },
-    );
+    const started = api.createCheck(DEMO_SWEATER);
+    await vi.advanceTimersByTimeAsync(300); // past the request, before the run finishes
+    const { id } = await started;
+    await api.cancelCheck(id);
+    await vi.runAllTimersAsync();
+    expect((await settle(api.getCheck(id)))?.status).toBe("cancelled");
+    await expectRejection(api.cancelCheck(id), { status: 409 });
   });
 
-  it("still runs a stored sample without measurements, reporting no fit data", async () => {
+  it("streams each step, then completes", async () => {
     useStorage();
     const api = new MockApiClient();
     await settle(
-      api.saveProfile({ fit_mode: "quick_fit", quick_sizes: { bottoms: "M" } }),
+      api.saveProfile({ fit_mode: "quick_fit", quick_sizes: { tops: "S" } }),
     );
-    const { id } = await settle(api.createCheck("https://www.levi.com/p/501"));
+    const { id } = await settle(api.createCheck(DEMO_SWEATER));
+    const events: string[] = [];
+    api.subscribe(id, (e) => events.push(`${e.type}:${e.step ?? ""}:${e.status ?? ""}`));
     await vi.runAllTimersAsync();
-    const result = await settle(api.getCheck(id));
-    expect(result?.status).toBe("done");
-    expect(result?.options[0].fit_check.rows).toEqual([]);
-    expect(result?.options[0].fit_check.confidence).toBe("limited");
-    expect(result?.options[0].listing_id).toBeTruthy();
+    expect(events).toContain("step:fit:done");
+    expect(events[events.length - 1]).toBe("complete::");
   });
 });
 
 const DEMO_SWEATER = "https://merchandizable.example/p/demo-relaxed-sweater";
+const DEMO_TROUSERS = "https://merchandizable.example/p/demo-wide-leg-trousers";
+const DEMO_PETITE = "https://merchandizable.example/p/demo-petite-trousers";
 const QUICK = {
   fit_mode: "quick_fit",
   size_system: "eu",
@@ -157,56 +208,6 @@ const PERSONAL: ProfileIn = {
     { dimension: "hips", value: 98, basis: "garment", note: "My jeans" },
   ],
 };
-
-describe("MockApiClient stored samples", () => {
-  it("reports a store that blocks us as a failed check", async () => {
-    useStorage();
-    const api = new MockApiClient();
-    await settle(
-      api.saveProfile({ fit_mode: "quick_fit", quick_sizes: { tops: "S" } }),
-    );
-    const { id } = await settle(
-      api.createCheck("https://www.agolde.com/products/90s-pinch-waist"),
-    );
-    await vi.runAllTimersAsync();
-    const result = await settle(api.getCheck(id));
-    expect(result?.status).toBe("failed");
-    expect(result?.error).toContain("blocked");
-  });
-
-  it("compares body measurements saved in Personal Fit", async () => {
-    useStorage();
-    const api = new MockApiClient();
-    await settle(
-      api.saveProfile({ unit: "in", waist: 26, inseam: 30, hips: 36 }),
-    );
-    const { id } = await settle(api.createCheck("https://www.levi.com/p/501"));
-    await vi.runAllTimersAsync();
-    const result = await settle(api.getCheck(id));
-    expect(result?.options[0].fit_check.rows.map((r) => r.dimension)).toEqual([
-      "waist",
-      "inseam",
-      "hips",
-    ]);
-    expect((await settle(api.recentChecks(1)))[0].verdict).toBe(result?.verdict);
-  });
-
-  it("explains a store without sample data", async () => {
-    useStorage();
-    await expectRejection(
-      new MockApiClient().createCheck("https://www.everlane.com/p/1"),
-      { status: 422 },
-    );
-  });
-
-  it("does not support an unknown store", async () => {
-    useStorage();
-    await expectRejection(
-      new MockApiClient().createCheck("https://elsewhere.test/p/1"),
-      { status: 422, message: "We don't support this store yet." },
-    );
-  });
-});
 
 describe("MockApiClient fit modes", () => {
   it("keeps Tops and Bottoms sizes separate", async () => {
