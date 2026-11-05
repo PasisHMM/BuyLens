@@ -13,7 +13,7 @@ from app.db import Database
 from app.log_config import configure_logging
 from app.pipeline.progress import RedisEventBus
 from app.queue import ArqCheckQueue, RedisRateLimiter
-from app.routers import brands, checks, health, profile
+from app.routers import brands, checks, health, measurements, profile
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -56,5 +56,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health.router)
     app.include_router(profile.router)
     app.include_router(brands.router)
+    app.include_router(measurements.router)
     app.include_router(checks.router)
     return app
