@@ -99,3 +99,127 @@ async def test_users_are_isolated(client, make_token):
     alice, bob = bearer(make_token(uuid4())), bearer(make_token(uuid4()))
     await client.put("/v1/profile", json=DESIGN_PROFILE, headers=alice)
     assert (await client.get("/v1/profile", headers=bob)).status_code == 404
+
+
+QUICK = {"fit_mode": "quick_fit", "size_system": "eu", "quick_sizes": {"tops": "S", "bottoms": "M"}}
+PERSONAL = {
+    "fit_mode": "personal_fit",
+    "unit": "cm",
+    "measurements": [
+        {"dimension": "chest", "value": 90},
+        {"dimension": "waist", "value": 76, "basis": "garment", "note": "My blue jeans"},
+    ],
+}
+
+
+async def test_quick_fit_round_trip_keeps_tops_and_bottoms_separate(client, auth):
+    assert (await client.put("/v1/profile", json=QUICK, headers=auth)).status_code == 204
+    body = (await client.get("/v1/profile", headers=auth)).json()
+    assert body["fit_mode"] == "quick_fit"
+    assert body["size_system"] == "eu"
+    assert body["quick_sizes"] == {"tops": "S", "bottoms": "M"}
+    assert body["measurements"] == []
+    assert (body["waist"], body["inseam"], body["hips"]) == (None, None, None)
+
+
+async def test_personal_fit_round_trip_with_basis_and_note(client, auth):
+    assert (await client.put("/v1/profile", json=PERSONAL, headers=auth)).status_code == 204
+    body = (await client.get("/v1/profile", headers=auth)).json()
+    assert body["fit_mode"] == "personal_fit"
+    assert body["measurements"] == [
+        {"dimension": "chest", "value": 90.0, "basis": "body", "note": None},
+        {"dimension": "waist", "value": 76.0, "basis": "garment", "note": "My blue jeans"},
+    ]
+
+
+async def test_old_body_means_personal_fit_with_body_measurements(client, auth):
+    assert (await client.put("/v1/profile", json=DESIGN_PROFILE, headers=auth)).status_code == 204
+    body = (await client.get("/v1/profile", headers=auth)).json()
+    assert body["fit_mode"] == "personal_fit"
+    assert {m["dimension"]: m["basis"] for m in body["measurements"]} == {
+        "waist": "body",
+        "inseam": "body",
+        "hips": "body",
+    }
+    assert (body["waist"], body["inseam"], body["hips"]) == (26.0, 30.0, 36.0)  # older clients read these
+
+
+async def test_switching_modes_loses_nothing(client, auth):
+    await client.put("/v1/profile", json=QUICK, headers=auth)
+    await client.put("/v1/profile", json=PERSONAL, headers=auth)
+    resp = await client.put("/v1/profile", json={"fit_mode": "quick_fit"}, headers=auth)
+    assert resp.status_code == 204
+    body = (await client.get("/v1/profile", headers=auth)).json()
+    assert body["fit_mode"] == "quick_fit"
+    assert body["quick_sizes"] == {"tops": "S", "bottoms": "M"}
+    assert [m["dimension"] for m in body["measurements"]] == ["chest", "waist"]
+
+
+async def test_a_new_body_without_brands_keeps_saved_brands(client, auth):
+    await client.put("/v1/profile", json=DESIGN_PROFILE, headers=auth)
+    await client.put("/v1/profile", json=QUICK, headers=auth)
+    body = (await client.get("/v1/profile", headers=auth)).json()
+    assert [b["slug"] for b in body["brands"]] == ["everlane", "levis"]
+
+
+async def test_old_body_without_brands_still_clears_them(client, auth):
+    await client.put("/v1/profile", json=DESIGN_PROFILE, headers=auth)
+    await client.put("/v1/profile", json={"unit": "in", "waist": 26, "inseam": 30}, headers=auth)
+    assert (await client.get("/v1/profile", headers=auth)).json()["brands"] == []
+
+
+async def test_first_quick_fit_profile_defaults_to_centimeters(client, auth):
+    await client.put("/v1/profile", json=QUICK, headers=auth)
+    assert (await client.get("/v1/profile", headers=auth)).json()["unit"] == "cm"
+
+
+async def test_a_mode_switch_keeps_the_saved_unit(client, auth):
+    await client.put("/v1/profile", json=DESIGN_PROFILE, headers=auth)
+    await client.put("/v1/profile", json=QUICK, headers=auth)
+    assert (await client.get("/v1/profile", headers=auth)).json()["unit"] == "in"
+
+
+_CM_WAIST = {"dimension": "waist", "value": 66}
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"fit_mode": "quick_fit"}, "Pick a size"),
+        ({"fit_mode": "personal_fit"}, "at least one measurement"),
+        ({"fit_mode": "quick_fit", "quick_sizes": {"shoes": "M"}}, ""),
+        ({"fit_mode": "quick_fit", "quick_sizes": {"tops": "XXL"}}, ""),
+        ({"fit_mode": "chest_only", "quick_sizes": {"tops": "S"}}, ""),
+        (
+            {"fit_mode": "personal_fit", "unit": "cm", "measurements": [{"dimension": "neck", "value": 38}]},
+            "",
+        ),
+        ({"fit_mode": "personal_fit", "measurements": [_CM_WAIST]}, "unit"),
+        ({"fit_mode": "personal_fit", "unit": "cm", "measurements": [_CM_WAIST, _CM_WAIST]}, "once"),
+        (
+            {"fit_mode": "personal_fit", "unit": "cm", "measurements": [{"dimension": "chest", "value": 20}]},
+            "Chest looks off",
+        ),
+        ({"quick_sizes": {"tops": "S"}}, "fit_mode"),
+        ({"unit": "cm"}, "fit_mode"),
+        ({"fit_mode": "quick_fit", "quick_sizes": {"tops": "S"}, "waist": 66}, "not both"),
+    ],
+    ids=[
+        "quick-no-size",
+        "personal-no-measurement",
+        "unknown-category",
+        "unknown-size",
+        "unknown-mode",
+        "unknown-measurement",
+        "measurements-without-unit",
+        "duplicate-measurement",
+        "implausible",
+        "no-mode",
+        "nothing-to-save",
+        "old-and-new-mixed",
+    ],
+)
+async def test_rejects_invalid_new_bodies(client, auth, payload, message):
+    resp = await client.put("/v1/profile", json=payload, headers=auth)
+    assert resp.status_code == 422
+    assert message in resp.text

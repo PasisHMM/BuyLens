@@ -185,7 +185,9 @@ def test_plausible_range_includes_both_ends(cm: float, expected: bool) -> None:
 
 
 def _waist_range(min_cm: float, max_cm: float) -> SizeReference:
-    return SizeReference(SizeSystem.EU, FitCategory.BOTTOMS, QuickSize.S, D.WAIST, min_cm, max_cm, "test chart")
+    return SizeReference(
+        SizeSystem.EU, FitCategory.BOTTOMS, QuickSize.S, D.WAIST, min_cm, max_cm, "test chart"
+    )
 
 
 @pytest.mark.parametrize(

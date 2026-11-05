@@ -13,6 +13,7 @@ import pytest
 
 from app.config import Settings
 from app.db import Database
+from app.pipeline.fit_profile import Measurement, ProfileUpdate
 from app.pipeline.models import Basis, Dimension, FitCategory, FitMode, QuickSize, SizeSystem
 from app.repos.profiles import PgProfileRepo
 from app.units import Unit
@@ -22,6 +23,11 @@ pytestmark = [
     pytest.mark.integration,
     pytest.mark.skipif(not DATABASE_URL, reason="TEST_DATABASE_URL not set"),
 ]
+
+WAIST_AND_INSEAM = ProfileUpdate(
+    FitMode.PERSONAL_FIT,
+    measurements={Dimension.WAIST: Measurement(76.0), Dimension.INSEAM: Measurement(81.0)},
+)
 
 
 @pytest.fixture
@@ -62,9 +68,7 @@ async def test_measurement_dimensions_match_the_catalog(db: Database) -> None:
 
 async def test_profiles_saved_by_the_current_app_are_personal_fit_body_measurements(db: Database) -> None:
     user = await new_auth_user(db)
-    await PgProfileRepo(db).save(
-        user, unit=Unit.CM, measurements_cm={"waist": 76.0, "inseam": 81.0}, brand_ids=[]
-    )
+    await PgProfileRepo(db).save(user, unit=Unit.CM, update=WAIST_AND_INSEAM, brand_ids=[])
 
     async with db.pool.acquire() as conn:
         mode = await conn.fetchval("select fit_mode from profiles where user_id = $1", user)
@@ -75,9 +79,7 @@ async def test_profiles_saved_by_the_current_app_are_personal_fit_body_measureme
 
 async def test_unknown_measurement_is_rejected(db: Database) -> None:
     user = await new_auth_user(db)
-    await PgProfileRepo(db).save(
-        user, unit=Unit.CM, measurements_cm={"waist": 76.0, "inseam": 81.0}, brand_ids=[]
-    )
+    await PgProfileRepo(db).save(user, unit=Unit.CM, update=WAIST_AND_INSEAM, brand_ids=[])
     async with db.user_tx(user) as conn:
         with pytest.raises(asyncpg.ForeignKeyViolationError):
             await conn.execute(

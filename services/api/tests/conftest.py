@@ -11,6 +11,7 @@ from pydantic import SecretStr
 
 from app.config import Settings
 from app.main import create_app
+from app.pipeline.fit_profile import ProfileUpdate, merge_profile
 from app.repos.profiles import StoredProfile, UnknownBrandError
 from app.routers.brands import get_brand_repo
 from app.routers.profile import get_profile_repo
@@ -34,15 +35,17 @@ class InMemoryProfileRepo:
         return self.rows.get(user_id)
 
     async def save(
-        self, user_id: UUID, *, unit: Unit, measurements_cm: dict[str, float], brand_ids: list[UUID]
+        self, user_id: UUID, *, unit: Unit, update: ProfileUpdate, brand_ids: list[UUID] | None
     ) -> None:
         by_id = {b.id: b for b in CATALOG}
-        if any(b not in by_id for b in brand_ids):
+        if any(b not in by_id for b in brand_ids or []):
             raise UnknownBrandError
+        stored = self.rows.get(user_id)
+        brands = stored.brands if stored and brand_ids is None else [by_id[b] for b in brand_ids or []]
         self.rows[user_id] = StoredProfile(
             unit=unit,
-            measurements_cm=dict(measurements_cm),
-            brands=sorted((by_id[b] for b in brand_ids), key=lambda b: b.name),
+            fit=merge_profile(stored.fit if stored else None, update),
+            brands=sorted(brands, key=lambda b: b.name),
             updated_at=datetime.now(UTC),
         )
 
