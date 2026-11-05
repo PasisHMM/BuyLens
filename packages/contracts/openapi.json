@@ -34,6 +34,80 @@
         "title": "Brand",
         "type": "object"
       },
+      "Catalog": {
+        "description": "What can be measured and which rules apply. Web forms read this and keep no copy of their own.",
+        "properties": {
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryOut"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "dimensions": {
+            "items": {
+              "$ref": "#/components/schemas/DimensionOut"
+            },
+            "title": "Dimensions",
+            "type": "array"
+          },
+          "quick_sizes": {
+            "items": {
+              "$ref": "#/components/schemas/QuickSize"
+            },
+            "title": "Quick Sizes",
+            "type": "array"
+          },
+          "size_systems": {
+            "items": {
+              "$ref": "#/components/schemas/SizeSystem"
+            },
+            "title": "Size Systems",
+            "type": "array"
+          }
+        },
+        "required": [
+          "dimensions",
+          "categories",
+          "quick_sizes",
+          "size_systems"
+        ],
+        "title": "Catalog",
+        "type": "object"
+      },
+      "CategoryOut": {
+        "properties": {
+          "critical": {
+            "items": {
+              "$ref": "#/components/schemas/Dimension"
+            },
+            "title": "Critical",
+            "type": "array"
+          },
+          "id": {
+            "$ref": "#/components/schemas/FitCategory"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "secondary": {
+            "items": {
+              "$ref": "#/components/schemas/Dimension"
+            },
+            "title": "Secondary",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "critical",
+          "secondary"
+        ],
+        "title": "CategoryOut",
+        "type": "object"
+      },
       "CheckCreated": {
         "properties": {
           "id": {
@@ -351,6 +425,58 @@
         "title": "CheckSummary",
         "type": "object"
       },
+      "Dimension": {
+        "description": "A body measurement. Chest and bust are one measurement: the fullest girth of the upper body.",
+        "enum": [
+          "chest",
+          "waist",
+          "hips",
+          "shoulders",
+          "inseam",
+          "sleeve",
+          "height"
+        ],
+        "title": "Dimension",
+        "type": "string"
+      },
+      "DimensionOut": {
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Dimension"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "max_cm": {
+            "title": "Max Cm",
+            "type": "number"
+          },
+          "min_cm": {
+            "title": "Min Cm",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "min_cm",
+          "max_cm"
+        ],
+        "title": "DimensionOut",
+        "type": "object"
+      },
+      "FitCategory": {
+        "description": "Garment groups that have agreed fit rules.",
+        "enum": [
+          "bottoms",
+          "tops",
+          "dresses",
+          "outerwear"
+        ],
+        "title": "FitCategory",
+        "type": "string"
+      },
       "FitCheck": {
         "properties": {
           "alerts": {
@@ -405,6 +531,15 @@
           "missing"
         ],
         "title": "FitMatch",
+        "type": "string"
+      },
+      "FitMode": {
+        "description": "How a profile describes the user. Quick Fit sizes are approximate and never prove a mismatch.",
+        "enum": [
+          "quick_fit",
+          "personal_fit"
+        ],
+        "title": "FitMode",
         "type": "string"
       },
       "FitRow": {
@@ -477,10 +612,83 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "MeasurementIn": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "$ref": "#/components/schemas/Basis",
+            "default": "body"
+          },
+          "dimension": {
+            "$ref": "#/components/schemas/Dimension"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "value": {
+            "exclusiveMinimum": 0.0,
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "dimension",
+          "value"
+        ],
+        "title": "MeasurementIn",
+        "type": "object"
+      },
+      "MeasurementOut": {
+        "properties": {
+          "basis": {
+            "$ref": "#/components/schemas/Basis"
+          },
+          "dimension": {
+            "$ref": "#/components/schemas/Dimension"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "value": {
+            "title": "Value",
+            "type": "number"
+          }
+        },
+        "required": [
+          "dimension",
+          "value",
+          "basis",
+          "note"
+        ],
+        "title": "MeasurementOut",
+        "type": "object"
+      },
       "OptionOut": {
         "properties": {
           "fit_check": {
             "$ref": "#/components/schemas/FitCheck"
+          },
+          "listing_id": {
+            "format": "uuid",
+            "title": "Listing Id",
+            "type": "string"
           },
           "price_check": {
             "$ref": "#/components/schemas/PriceCheck"
@@ -510,6 +718,7 @@
         },
         "required": [
           "rank",
+          "listing_id",
           "seller",
           "url",
           "total_cents",
@@ -659,16 +868,33 @@
       },
       "ProfileIn": {
         "additionalProperties": false,
-        "description": "Body of PUT /v1/profile, in the unit the user chose on the IN / cm toggle.",
+        "description": "Body of PUT /v1/profile, in the unit the user chose on the IN / cm toggle.\n\nTwo shapes are accepted. The current one names a `fit_mode` plus the sections to replace; a section\nleft out keeps what is stored. The older `{unit, waist, inseam, hips}` still means Personal Fit\nwith body measurements, for clients that haven't updated.",
         "properties": {
           "brand_ids": {
-            "items": {
-              "format": "uuid",
-              "type": "string"
-            },
-            "maxItems": 30,
-            "title": "Brand Ids",
-            "type": "array"
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 30,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brand Ids"
+          },
+          "fit_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FitMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "hips": {
             "anyOf": [
@@ -683,24 +909,81 @@
             "title": "Hips"
           },
           "inseam": {
-            "exclusiveMinimum": 0.0,
-            "title": "Inseam",
-            "type": "number"
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Inseam"
+          },
+          "measurements": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/MeasurementIn"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measurements"
+          },
+          "quick_sizes": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/QuickSize"
+                },
+                "propertyNames": {
+                  "$ref": "#/components/schemas/FitCategory"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quick Sizes"
+          },
+          "size_system": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SizeSystem"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "unit": {
-            "$ref": "#/components/schemas/Unit"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Unit"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "waist": {
-            "exclusiveMinimum": 0.0,
-            "title": "Waist",
-            "type": "number"
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waist"
           }
         },
-        "required": [
-          "unit",
-          "waist",
-          "inseam"
-        ],
         "title": "ProfileIn",
         "type": "object"
       },
@@ -713,6 +996,9 @@
             },
             "title": "Brands",
             "type": "array"
+          },
+          "fit_mode": {
+            "$ref": "#/components/schemas/FitMode"
           },
           "hips": {
             "anyOf": [
@@ -736,6 +1022,33 @@
             ],
             "title": "Inseam"
           },
+          "measurements": {
+            "items": {
+              "$ref": "#/components/schemas/MeasurementOut"
+            },
+            "title": "Measurements",
+            "type": "array"
+          },
+          "quick_sizes": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/QuickSize"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/FitCategory"
+            },
+            "title": "Quick Sizes",
+            "type": "object"
+          },
+          "size_system": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SizeSystem"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "unit": {
             "$ref": "#/components/schemas/Unit"
           },
@@ -758,6 +1071,10 @@
         },
         "required": [
           "unit",
+          "fit_mode",
+          "size_system",
+          "quick_sizes",
+          "measurements",
           "waist",
           "inseam",
           "hips",
@@ -766,6 +1083,17 @@
         ],
         "title": "ProfileOut",
         "type": "object"
+      },
+      "QuickSize": {
+        "enum": [
+          "XS",
+          "S",
+          "M",
+          "L",
+          "XL"
+        ],
+        "title": "QuickSize",
+        "type": "string"
       },
       "ReturnPolicy": {
         "properties": {
@@ -937,6 +1265,14 @@
         ],
         "title": "SellerRisk",
         "type": "object"
+      },
+      "SizeSystem": {
+        "enum": [
+          "eu",
+          "us"
+        ],
+        "title": "SizeSystem",
+        "type": "string"
       },
       "Unit": {
         "enum": [
@@ -1377,6 +1713,27 @@
         "summary": "Check Events",
         "tags": [
           "checks"
+        ]
+      }
+    },
+    "/v1/measurements": {
+      "get": {
+        "operationId": "read_catalog_v1_measurements_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Catalog"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Read Catalog",
+        "tags": [
+          "measurements"
         ]
       }
     },

@@ -1,0 +1,100 @@
+{
+  "dimensions": [
+    {
+      "id": "chest",
+      "label": "Chest / bust",
+      "min_cm": 60.0,
+      "max_cm": 180.0
+    },
+    {
+      "id": "waist",
+      "label": "Waist",
+      "min_cm": 45.0,
+      "max_cm": 200.0
+    },
+    {
+      "id": "hips",
+      "label": "Hips",
+      "min_cm": 60.0,
+      "max_cm": 200.0
+    },
+    {
+      "id": "shoulders",
+      "label": "Shoulders",
+      "min_cm": 30.0,
+      "max_cm": 70.0
+    },
+    {
+      "id": "inseam",
+      "label": "Inseam",
+      "min_cm": 40.0,
+      "max_cm": 120.0
+    },
+    {
+      "id": "sleeve",
+      "label": "Sleeve length",
+      "min_cm": 40.0,
+      "max_cm": 100.0
+    },
+    {
+      "id": "height",
+      "label": "Height",
+      "min_cm": 120.0,
+      "max_cm": 230.0
+    }
+  ],
+  "categories": [
+    {
+      "id": "bottoms",
+      "label": "Bottoms",
+      "critical": [
+        "waist",
+        "hips"
+      ],
+      "secondary": [
+        "inseam"
+      ]
+    },
+    {
+      "id": "tops",
+      "label": "Tops",
+      "critical": [
+        "chest",
+        "shoulders"
+      ],
+      "secondary": [
+        "waist"
+      ]
+    },
+    {
+      "id": "dresses",
+      "label": "Dresses",
+      "critical": [
+        "chest",
+        "waist",
+        "hips"
+      ],
+      "secondary": []
+    },
+    {
+      "id": "outerwear",
+      "label": "Outerwear",
+      "critical": [
+        "chest",
+        "shoulders"
+      ],
+      "secondary": []
+    }
+  ],
+  "quick_sizes": [
+    "XS",
+    "S",
+    "M",
+    "L",
+    "XL"
+  ],
+  "size_systems": [
+    "eu",
+    "us"
+  ]
+}

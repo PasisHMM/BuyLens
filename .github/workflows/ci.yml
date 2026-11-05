@@ -30,6 +30,8 @@ jobs:
       - run: uv run pytest -q
       - name: OpenAPI contract is up to date
         run: uv run python scripts/export_openapi.py --check
+      - name: Prototype data is up to date
+        run: uv run python scripts/export_catalog.py --check
 
   database:
     name: Migrations + RLS (Postgres 16)

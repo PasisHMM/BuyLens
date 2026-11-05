@@ -4,711 +4,854 @@
  */
 
 export interface paths {
-  "/healthz": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/healthz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Healthz */
+        get: operations["healthz_healthz_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Healthz */
-    get: operations["healthz_healthz_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/brands": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/brands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Brands
+         * @description Public catalog lookup for the "+ Add brand" combobox.
+         */
+        get: operations["search_brands_v1_brands_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /**
-     * Search Brands
-     * @description Public catalog lookup for the "+ Add brand" combobox.
-     */
-    get: operations["search_brands_v1_brands_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/checks": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Recent Checks */
+        get: operations["recent_checks_v1_checks_get"];
+        put?: never;
+        /** Create Check */
+        post: operations["create_check_v1_checks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Recent Checks */
-    get: operations["recent_checks_v1_checks_get"];
-    put?: never;
-    /** Create Check */
-    post: operations["create_check_v1_checks_post"];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/checks/{run_id}": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/checks/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Check */
+        get: operations["read_check_v1_checks__run_id__get"];
+        put?: never;
+        post?: never;
+        /** Cancel Check */
+        delete: operations["cancel_check_v1_checks__run_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Read Check */
-    get: operations["read_check_v1_checks__run_id__get"];
-    put?: never;
-    post?: never;
-    /** Cancel Check */
-    delete: operations["cancel_check_v1_checks__run_id__delete"];
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/checks/{run_id}/events": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/checks/{run_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check Events
+         * @description Server-Sent Events for the loading modal. Replays from the start (or Last-Event-ID).
+         *
+         *     EventSource can't send an Authorization header; use a fetch-based SSE client
+         *     (e.g. @microsoft/fetch-event-source) with the Supabase access token.
+         */
+        get: operations["check_events_v1_checks__run_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /**
-     * Check Events
-     * @description Server-Sent Events for the loading modal. Replays from the start (or Last-Event-ID).
-     *
-     *     EventSource can't send an Authorization header; use a fetch-based SSE client
-     *     (e.g. @microsoft/fetch-event-source) with the Supabase access token.
-     */
-    get: operations["check_events_v1_checks__run_id__events_get"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/v1/profile": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/v1/measurements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Catalog */
+        get: operations["read_catalog_v1_measurements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Read Profile */
-    get: operations["read_profile_v1_profile_get"];
-    /** Save Profile */
-    put: operations["save_profile_v1_profile_put"];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
+    "/v1/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Profile */
+        get: operations["read_profile_v1_profile_get"];
+        /** Save Profile */
+        put: operations["save_profile_v1_profile_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    /**
-     * Basis
-     * @description What a number measures: a person's body, or a garment laid flat.
-     * @enum {string}
-     */
-    Basis: "body" | "garment";
-    /** Brand */
-    Brand: {
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /** Name */
-      name: string;
-      /** Slug */
-      slug: string;
+    schemas: {
+        /**
+         * Basis
+         * @description What a number measures: a person's body, or a garment laid flat.
+         * @enum {string}
+         */
+        Basis: "body" | "garment";
+        /** Brand */
+        Brand: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+        };
+        /**
+         * Catalog
+         * @description What can be measured and which rules apply. Web forms read this and keep no copy of their own.
+         */
+        Catalog: {
+            /** Categories */
+            categories: components["schemas"]["CategoryOut"][];
+            /** Dimensions */
+            dimensions: components["schemas"]["DimensionOut"][];
+            /** Quick Sizes */
+            quick_sizes: components["schemas"]["QuickSize"][];
+            /** Size Systems */
+            size_systems: components["schemas"]["SizeSystem"][];
+        };
+        /** CategoryOut */
+        CategoryOut: {
+            /** Critical */
+            critical: components["schemas"]["Dimension"][];
+            id: components["schemas"]["FitCategory"];
+            /** Label */
+            label: string;
+            /** Secondary */
+            secondary: components["schemas"]["Dimension"][];
+        };
+        /** CheckCreated */
+        CheckCreated: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "done" | "failed" | "cancelled";
+        };
+        /** CheckIn */
+        CheckIn: {
+            /** Url */
+            url: string;
+        };
+        /** CheckResult */
+        CheckResult: {
+            /** Completed At */
+            completed_at: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Current Step */
+            current_step: string | null;
+            /** Error */
+            error: string | null;
+            /** Explanation */
+            explanation: string | null;
+            /** Headline */
+            headline: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Input Url */
+            input_url: string;
+            /** Options */
+            options: components["schemas"]["OptionOut"][];
+            product: components["schemas"]["ProductOut"] | null;
+            /** Selected Size */
+            selected_size: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "done" | "failed" | "cancelled";
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "in" | "cm";
+            /** Verdict */
+            verdict: ("BUY" | "CONSIDER" | "SKIP") | null;
+            why_not: components["schemas"]["WhyNot"] | null;
+        };
+        /**
+         * CheckSummary
+         * @description The "A recent check" card.
+         */
+        CheckSummary: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Currency */
+            currency: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Image Url */
+            image_url: string | null;
+            /** Product Name */
+            product_name: string | null;
+            /** Selected Size */
+            selected_size: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "done" | "failed" | "cancelled";
+            /** Total Cents */
+            total_cents: number | null;
+            /** Verdict */
+            verdict: ("BUY" | "CONSIDER" | "SKIP") | null;
+        };
+        /**
+         * Dimension
+         * @description A body measurement. Chest and bust are one measurement: the fullest girth of the upper body.
+         * @enum {string}
+         */
+        Dimension: "chest" | "waist" | "hips" | "shoulders" | "inseam" | "sleeve" | "height";
+        /** DimensionOut */
+        DimensionOut: {
+            id: components["schemas"]["Dimension"];
+            /** Label */
+            label: string;
+            /** Max Cm */
+            max_cm: number;
+            /** Min Cm */
+            min_cm: number;
+        };
+        /**
+         * FitCategory
+         * @description Garment groups that have agreed fit rules.
+         * @enum {string}
+         */
+        FitCategory: "bottoms" | "tops" | "dresses" | "outerwear";
+        /** FitCheck */
+        FitCheck: {
+            /** Alerts */
+            alerts: string[];
+            /**
+             * Confidence
+             * @enum {string}
+             */
+            confidence: "high" | "medium" | "limited";
+            /** Notes */
+            notes: string;
+            /** Rows */
+            rows: components["schemas"]["FitRow"][];
+            /** Size Label */
+            size_label: string;
+        };
+        /**
+         * FitMatch
+         * @enum {string}
+         */
+        FitMatch: "ok" | "tight" | "loose" | "short" | "long" | "missing";
+        /**
+         * FitMode
+         * @description How a profile describes the user. Quick Fit sizes are approximate and never prove a mismatch.
+         * @enum {string}
+         */
+        FitMode: "quick_fit" | "personal_fit";
+        /** FitRow */
+        FitRow: {
+            basis: components["schemas"]["Basis"] | null;
+            /** Dimension */
+            dimension: string;
+            /** Garment Cm */
+            garment_cm: number | null;
+            match: components["schemas"]["FitMatch"];
+            /** Room Cm */
+            room_cm: number | null;
+            /** User Cm */
+            user_cm: number;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /** MeasurementIn */
+        MeasurementIn: {
+            /** @default body */
+            basis: components["schemas"]["Basis"];
+            dimension: components["schemas"]["Dimension"];
+            /** Note */
+            note?: string | null;
+            /** Value */
+            value: number;
+        };
+        /** MeasurementOut */
+        MeasurementOut: {
+            basis: components["schemas"]["Basis"];
+            dimension: components["schemas"]["Dimension"];
+            /** Note */
+            note: string | null;
+            /** Value */
+            value: number;
+        };
+        /** OptionOut */
+        OptionOut: {
+            fit_check: components["schemas"]["FitCheck"];
+            /**
+             * Listing Id
+             * Format: uuid
+             */
+            listing_id: string;
+            price_check: components["schemas"]["PriceCheck"];
+            /** Rank */
+            rank: number;
+            seller: components["schemas"]["SellerOut"];
+            seller_risk: components["schemas"]["SellerRisk"];
+            /** Summary */
+            summary: string;
+            /** Total Cents */
+            total_cents: number;
+            /** Url */
+            url: string;
+        };
+        /** PriceCheck */
+        PriceCheck: {
+            /** Comparable Count */
+            comparable_count: number;
+            /** Currency */
+            currency: string;
+            /** Delta Cents */
+            delta_cents: number | null;
+            /** Delta Pct */
+            delta_pct: number | null;
+            /** Listing Cents */
+            listing_cents: number;
+            /** Market Avg Cents */
+            market_avg_cents: number | null;
+            /** Shipping Cents */
+            shipping_cents: number | null;
+            /** Total Cents */
+            total_cents: number;
+            /** Total Is Estimate */
+            total_is_estimate: boolean;
+        };
+        /** ProductOut */
+        ProductOut: {
+            /** Attributes */
+            attributes: {
+                [key: string]: unknown;
+            };
+            /** Brand */
+            brand: string | null;
+            /** Category */
+            category: string | null;
+            /** Image Url */
+            image_url: string | null;
+            /** Name */
+            name: string;
+        };
+        /**
+         * ProfileIn
+         * @description Body of PUT /v1/profile, in the unit the user chose on the IN / cm toggle.
+         *
+         *     Two shapes are accepted. The current one names a `fit_mode` plus the sections to replace; a section
+         *     left out keeps what is stored. The older `{unit, waist, inseam, hips}` still means Personal Fit
+         *     with body measurements, for clients that haven't updated.
+         */
+        ProfileIn: {
+            /** Brand Ids */
+            brand_ids?: string[] | null;
+            fit_mode?: components["schemas"]["FitMode"] | null;
+            /** Hips */
+            hips?: number | null;
+            /** Inseam */
+            inseam?: number | null;
+            /** Measurements */
+            measurements?: components["schemas"]["MeasurementIn"][] | null;
+            /** Quick Sizes */
+            quick_sizes?: {
+                [key: string]: components["schemas"]["QuickSize"];
+            } | null;
+            size_system?: components["schemas"]["SizeSystem"] | null;
+            unit?: components["schemas"]["Unit"] | null;
+            /** Waist */
+            waist?: number | null;
+        };
+        /**
+         * ProfileOut
+         * @description Measurements are returned in the user's chosen unit, ready for display.
+         */
+        ProfileOut: {
+            /** Brands */
+            brands: components["schemas"]["Brand"][];
+            fit_mode: components["schemas"]["FitMode"];
+            /** Hips */
+            hips: number | null;
+            /** Inseam */
+            inseam: number | null;
+            /** Measurements */
+            measurements: components["schemas"]["MeasurementOut"][];
+            /** Quick Sizes */
+            quick_sizes: {
+                [key: string]: components["schemas"]["QuickSize"];
+            };
+            size_system: components["schemas"]["SizeSystem"] | null;
+            unit: components["schemas"]["Unit"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Waist */
+            waist: number | null;
+        };
+        /**
+         * QuickSize
+         * @enum {string}
+         */
+        QuickSize: "XS" | "S" | "M" | "L" | "XL";
+        /** ReturnPolicy */
+        ReturnPolicy: {
+            /** Details */
+            details?: string | null;
+            /** Free */
+            free?: boolean | null;
+            /** Restocking Fee */
+            restocking_fee?: boolean | null;
+            /** Title */
+            title?: string | null;
+            /**
+             * Verified
+             * @default false
+             */
+            verified: boolean;
+            /** Window Days */
+            window_days?: number | null;
+        };
+        /** SellerOut */
+        SellerOut: {
+            /** Domain */
+            domain: string;
+            /** Name */
+            name: string;
+        };
+        /** SellerRisk */
+        SellerRisk: {
+            /**
+             * Fit Signal
+             * @default unknown
+             * @enum {string}
+             */
+            fit_signal: "runs_small" | "true_to_size" | "runs_large" | "unknown";
+            /** Is Official */
+            is_official: boolean;
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "low" | "medium" | "high";
+            return_policy: components["schemas"]["ReturnPolicy"];
+            /** Review Count */
+            review_count: number | null;
+            /** Review Highlights */
+            review_highlights: string[];
+            /** Review Rating */
+            review_rating: number | null;
+            /** Seller Name */
+            seller_name: string;
+            /** Trust Rating */
+            trust_rating: number | null;
+        };
+        /**
+         * SizeSystem
+         * @enum {string}
+         */
+        SizeSystem: "eu" | "us";
+        /**
+         * Unit
+         * @enum {string}
+         */
+        Unit: "in" | "cm";
+        /** ValidationError */
+        ValidationError: {
+            /** Context */
+            ctx?: Record<string, never>;
+            /** Input */
+            input?: unknown;
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+        };
+        /** WhyNot */
+        WhyNot: {
+            /** Buy */
+            buy?: string | null;
+            /** Skip */
+            skip?: string | null;
+        };
     };
-    /** CheckCreated */
-    CheckCreated: {
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /**
-       * Status
-       * @enum {string}
-       */
-      status: "queued" | "running" | "done" | "failed" | "cancelled";
-    };
-    /** CheckIn */
-    CheckIn: {
-      /** Url */
-      url: string;
-    };
-    /** CheckResult */
-    CheckResult: {
-      /** Completed At */
-      completed_at: string | null;
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-      /** Current Step */
-      current_step: string | null;
-      /** Error */
-      error: string | null;
-      /** Explanation */
-      explanation: string | null;
-      /** Headline */
-      headline: string | null;
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /** Input Url */
-      input_url: string;
-      /** Options */
-      options: components["schemas"]["OptionOut"][];
-      product: components["schemas"]["ProductOut"] | null;
-      /** Selected Size */
-      selected_size: string | null;
-      /**
-       * Status
-       * @enum {string}
-       */
-      status: "queued" | "running" | "done" | "failed" | "cancelled";
-      /**
-       * Unit
-       * @enum {string}
-       */
-      unit: "in" | "cm";
-      /** Verdict */
-      verdict: ("BUY" | "CONSIDER" | "SKIP") | null;
-      why_not: components["schemas"]["WhyNot"] | null;
-    };
-    /**
-     * CheckSummary
-     * @description The "A recent check" card.
-     */
-    CheckSummary: {
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-      /** Currency */
-      currency: string | null;
-      /**
-       * Id
-       * Format: uuid
-       */
-      id: string;
-      /** Image Url */
-      image_url: string | null;
-      /** Product Name */
-      product_name: string | null;
-      /** Selected Size */
-      selected_size: string | null;
-      /**
-       * Status
-       * @enum {string}
-       */
-      status: "queued" | "running" | "done" | "failed" | "cancelled";
-      /** Total Cents */
-      total_cents: number | null;
-      /** Verdict */
-      verdict: ("BUY" | "CONSIDER" | "SKIP") | null;
-    };
-    /** FitCheck */
-    FitCheck: {
-      /** Alerts */
-      alerts: string[];
-      /**
-       * Confidence
-       * @enum {string}
-       */
-      confidence: "high" | "medium" | "limited";
-      /** Notes */
-      notes: string;
-      /** Rows */
-      rows: components["schemas"]["FitRow"][];
-      /** Size Label */
-      size_label: string;
-    };
-    /**
-     * FitMatch
-     * @enum {string}
-     */
-    FitMatch: "ok" | "tight" | "loose" | "short" | "long" | "missing";
-    /** FitRow */
-    FitRow: {
-      basis: components["schemas"]["Basis"] | null;
-      /** Dimension */
-      dimension: string;
-      /** Garment Cm */
-      garment_cm: number | null;
-      match: components["schemas"]["FitMatch"];
-      /** Room Cm */
-      room_cm: number | null;
-      /** User Cm */
-      user_cm: number;
-    };
-    /** HTTPValidationError */
-    HTTPValidationError: {
-      /** Detail */
-      detail?: components["schemas"]["ValidationError"][];
-    };
-    /** OptionOut */
-    OptionOut: {
-      fit_check: components["schemas"]["FitCheck"];
-      price_check: components["schemas"]["PriceCheck"];
-      /** Rank */
-      rank: number;
-      seller: components["schemas"]["SellerOut"];
-      seller_risk: components["schemas"]["SellerRisk"];
-      /** Summary */
-      summary: string;
-      /** Total Cents */
-      total_cents: number;
-      /** Url */
-      url: string;
-    };
-    /** PriceCheck */
-    PriceCheck: {
-      /** Comparable Count */
-      comparable_count: number;
-      /** Currency */
-      currency: string;
-      /** Delta Cents */
-      delta_cents: number | null;
-      /** Delta Pct */
-      delta_pct: number | null;
-      /** Listing Cents */
-      listing_cents: number;
-      /** Market Avg Cents */
-      market_avg_cents: number | null;
-      /** Shipping Cents */
-      shipping_cents: number | null;
-      /** Total Cents */
-      total_cents: number;
-      /** Total Is Estimate */
-      total_is_estimate: boolean;
-    };
-    /** ProductOut */
-    ProductOut: {
-      /** Attributes */
-      attributes: {
-        [key: string]: unknown;
-      };
-      /** Brand */
-      brand: string | null;
-      /** Category */
-      category: string | null;
-      /** Image Url */
-      image_url: string | null;
-      /** Name */
-      name: string;
-    };
-    /**
-     * ProfileIn
-     * @description Body of PUT /v1/profile, in the unit the user chose on the IN / cm toggle.
-     */
-    ProfileIn: {
-      /** Brand Ids */
-      brand_ids?: string[];
-      /** Hips */
-      hips?: number | null;
-      /** Inseam */
-      inseam: number;
-      unit: components["schemas"]["Unit"];
-      /** Waist */
-      waist: number;
-    };
-    /**
-     * ProfileOut
-     * @description Measurements are returned in the user's chosen unit, ready for display.
-     */
-    ProfileOut: {
-      /** Brands */
-      brands: components["schemas"]["Brand"][];
-      /** Hips */
-      hips: number | null;
-      /** Inseam */
-      inseam: number | null;
-      unit: components["schemas"]["Unit"];
-      /**
-       * Updated At
-       * Format: date-time
-       */
-      updated_at: string;
-      /** Waist */
-      waist: number | null;
-    };
-    /** ReturnPolicy */
-    ReturnPolicy: {
-      /** Details */
-      details?: string | null;
-      /** Free */
-      free?: boolean | null;
-      /** Restocking Fee */
-      restocking_fee?: boolean | null;
-      /** Title */
-      title?: string | null;
-      /**
-       * Verified
-       * @default false
-       */
-      verified: boolean;
-      /** Window Days */
-      window_days?: number | null;
-    };
-    /** SellerOut */
-    SellerOut: {
-      /** Domain */
-      domain: string;
-      /** Name */
-      name: string;
-    };
-    /** SellerRisk */
-    SellerRisk: {
-      /**
-       * Fit Signal
-       * @default unknown
-       * @enum {string}
-       */
-      fit_signal: "runs_small" | "true_to_size" | "runs_large" | "unknown";
-      /** Is Official */
-      is_official: boolean;
-      /**
-       * Level
-       * @enum {string}
-       */
-      level: "low" | "medium" | "high";
-      return_policy: components["schemas"]["ReturnPolicy"];
-      /** Review Count */
-      review_count: number | null;
-      /** Review Highlights */
-      review_highlights: string[];
-      /** Review Rating */
-      review_rating: number | null;
-      /** Seller Name */
-      seller_name: string;
-      /** Trust Rating */
-      trust_rating: number | null;
-    };
-    /**
-     * Unit
-     * @enum {string}
-     */
-    Unit: "in" | "cm";
-    /** ValidationError */
-    ValidationError: {
-      /** Context */
-      ctx?: Record<string, never>;
-      /** Input */
-      input?: unknown;
-      /** Location */
-      loc: (string | number)[];
-      /** Message */
-      msg: string;
-      /** Error Type */
-      type: string;
-    };
-    /** WhyNot */
-    WhyNot: {
-      /** Buy */
-      buy?: string | null;
-      /** Skip */
-      skip?: string | null;
-    };
-  };
-  responses: never;
-  parameters: never;
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  healthz_healthz_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    healthz_healthz_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    search_brands_v1_brands_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": {
-            [key: string]: string;
-          };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Brand"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
     };
-  };
-  search_brands_v1_brands_get: {
-    parameters: {
-      query?: {
-        q?: string | null;
-        limit?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
+    recent_checks_v1_checks_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    create_check_v1_checks_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["Brand"][];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckIn"];
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckCreated"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
     };
-  };
-  recent_checks_v1_checks_get: {
-    parameters: {
-      query?: {
-        limit?: number;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
+    read_check_v1_checks__run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    cancel_check_v1_checks__run_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["CheckSummary"][];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: string;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
     };
-  };
-  create_check_v1_checks_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    check_events_v1_checks__run_id__events_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "last-event-id"?: string | null;
+            };
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["CheckIn"];
-      };
+    read_catalog_v1_measurements_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Catalog"];
+                };
+            };
+        };
     };
-    responses: {
-      /** @description Successful Response */
-      202: {
-        headers: {
-          [name: string]: unknown;
+    read_profile_v1_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          "application/json": components["schemas"]["CheckCreated"];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProfileOut"];
+                };
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
     };
-  };
-  read_check_v1_checks__run_id__get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        run_id: string;
-      };
-      cookie?: never;
+    save_profile_v1_profile_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["CheckResult"];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  cancel_check_v1_checks__run_id__delete: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        run_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      202: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": {
-            [key: string]: string;
-          };
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  check_events_v1_checks__run_id__events_get: {
-    parameters: {
-      query?: never;
-      header?: {
-        "last-event-id"?: string | null;
-      };
-      path: {
-        run_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": unknown;
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
-  read_profile_v1_profile_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ProfileOut"];
-        };
-      };
-    };
-  };
-  save_profile_v1_profile_put: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        "application/json": components["schemas"]["ProfileIn"];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      204: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content?: never;
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["HTTPValidationError"];
-        };
-      };
-    };
-  };
 }

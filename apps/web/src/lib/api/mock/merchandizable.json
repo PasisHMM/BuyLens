@@ -1,0 +1,392 @@
+{
+  "shop": {
+    "id": "merchandizable",
+    "name": "Merchandizable"
+  },
+  "chart": {
+    "title": "Merchandizable — Demo Size Chart",
+    "disclaimer": "Sample reference data supplied for this prototype. These are not independently verified official measurements.",
+    "basis": "body",
+    "sizing_mode": "NORMAL",
+    "unavailable_modes": [
+      "UMSTANDSMODE",
+      "KLEINE GRÖSSEN"
+    ],
+    "rows": [
+      {
+        "label": "XXS",
+        "eu": "32",
+        "uk": "4",
+        "chest": {
+          "min_cm": 75.0,
+          "max_cm": 78.0
+        },
+        "waist": {
+          "min_cm": 62.0,
+          "max_cm": 64.0
+        },
+        "hips": {
+          "min_cm": 82.0,
+          "max_cm": 86.0
+        }
+      },
+      {
+        "label": "XS",
+        "eu": "34",
+        "uk": "6",
+        "chest": {
+          "min_cm": 78.0,
+          "max_cm": 82.0
+        },
+        "waist": {
+          "min_cm": 64.0,
+          "max_cm": 66.0
+        },
+        "hips": {
+          "min_cm": 86.0,
+          "max_cm": 90.0
+        }
+      },
+      {
+        "label": "S",
+        "eu": "36–38",
+        "uk": "8–10",
+        "chest": {
+          "min_cm": 82.0,
+          "max_cm": 90.0
+        },
+        "waist": {
+          "min_cm": 66.0,
+          "max_cm": 74.0
+        },
+        "hips": {
+          "min_cm": 90.0,
+          "max_cm": 97.5
+        }
+      },
+      {
+        "label": "M",
+        "eu": "40–42",
+        "uk": "12–14",
+        "chest": {
+          "min_cm": 90.0,
+          "max_cm": 98.0
+        },
+        "waist": {
+          "min_cm": 74.0,
+          "max_cm": 82.5
+        },
+        "hips": {
+          "min_cm": 97.5,
+          "max_cm": 103.5
+        }
+      },
+      {
+        "label": "L",
+        "eu": "44–46",
+        "uk": "16–18",
+        "chest": {
+          "min_cm": 98.0,
+          "max_cm": 107.0
+        },
+        "waist": {
+          "min_cm": 82.5,
+          "max_cm": 93.0
+        },
+        "hips": {
+          "min_cm": 103.5,
+          "max_cm": 110.5
+        }
+      },
+      {
+        "label": "XL",
+        "eu": "48–50",
+        "uk": "20–22",
+        "chest": {
+          "min_cm": 107.0,
+          "max_cm": 119.0
+        },
+        "waist": {
+          "min_cm": 93.0,
+          "max_cm": 105.0
+        },
+        "hips": {
+          "min_cm": 110.5,
+          "max_cm": 120.5
+        }
+      },
+      {
+        "label": "XXL",
+        "eu": "52–54",
+        "uk": "24–26",
+        "chest": {
+          "min_cm": 119.0,
+          "max_cm": 131.0
+        },
+        "waist": {
+          "min_cm": 105.0,
+          "max_cm": 117.5
+        },
+        "hips": {
+          "min_cm": 120.5,
+          "max_cm": 131.0
+        }
+      },
+      {
+        "label": "3XL",
+        "eu": "56–58",
+        "uk": "28–30",
+        "chest": {
+          "min_cm": 131.0,
+          "max_cm": 143.0
+        },
+        "waist": {
+          "min_cm": 117.5,
+          "max_cm": 131.5
+        },
+        "hips": {
+          "min_cm": 131.0,
+          "max_cm": 143.0
+        }
+      },
+      {
+        "label": "4XL",
+        "eu": "60–62",
+        "uk": "32–34",
+        "chest": {
+          "min_cm": 143.0,
+          "max_cm": 155.0
+        },
+        "waist": {
+          "min_cm": 131.5,
+          "max_cm": 145.5
+        },
+        "hips": {
+          "min_cm": 143.0,
+          "max_cm": 155.0
+        }
+      }
+    ]
+  },
+  "products": [
+    {
+      "id": "demo-relaxed-sweater",
+      "name": "Demo Relaxed Sweater",
+      "product_type": "Sweater",
+      "category": "tops",
+      "price_cents": 4900,
+      "currency": "EUR",
+      "sold_sizes": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "input_url": "https://merchandizable.example/p/demo-relaxed-sweater",
+      "product_url": null,
+      "quick_fit": {
+        "XS": {
+          "outcome": "match",
+          "size_label": "XS",
+          "reasons": [
+            "Approximate fit based on size XS. The product is listed in this size.",
+            "The demo chart is sample data, not independently verified."
+          ]
+        },
+        "S": {
+          "outcome": "match",
+          "size_label": "S",
+          "reasons": [
+            "Approximate fit based on size S. The product is listed in this size.",
+            "The demo chart is sample data, not independently verified."
+          ]
+        },
+        "M": {
+          "outcome": "match",
+          "size_label": "M",
+          "reasons": [
+            "Approximate fit based on size M. The product is listed in this size.",
+            "The demo chart is sample data, not independently verified."
+          ]
+        },
+        "L": {
+          "outcome": "match",
+          "size_label": "L",
+          "reasons": [
+            "Approximate fit based on size L. The product is listed in this size.",
+            "The demo chart is sample data, not independently verified."
+          ]
+        },
+        "XL": {
+          "outcome": "match",
+          "size_label": "XL",
+          "reasons": [
+            "Approximate fit based on size XL. The product is listed in this size.",
+            "The demo chart is sample data, not independently verified."
+          ]
+        },
+        "none": {
+          "outcome": "uncertain",
+          "size_label": null,
+          "reasons": [
+            "Add your Tops size."
+          ]
+        }
+      },
+      "personal_fit": {
+        "outcome": "uncertain",
+        "size_label": null,
+        "reasons": [
+          "The demo chart is a body chart, so it needs body measurements.",
+          "The demo chart doesn't list shoulders.",
+          "Add your chest.",
+          "Add your waist."
+        ]
+      }
+    },
+    {
+      "id": "demo-wide-leg-trousers",
+      "name": "Demo Wide-Leg Trousers",
+      "product_type": "Pants",
+      "category": "bottoms",
+      "price_cents": 5900,
+      "currency": "EUR",
+      "sold_sizes": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL",
+        "XXL"
+      ],
+      "input_url": "https://merchandizable.example/p/demo-wide-leg-trousers",
+      "product_url": null,
+      "quick_fit": {
+        "XS": {
+          "outcome": "match",
+          "size_label": "XS",
+          "reasons": [
+            "Approximate fit based on size XS. The product is listed in this size.",
+            "The demo chart is sample data, not independently verified."
+          ]
+        },
+        "S": {
+          "outcome": "match",
+          "size_label": "S",
+          "reasons": [
+            "Approximate fit based on size S. The product is listed in this size.",
+            "The demo chart is sample data, not independently verified."
+          ]
+        },
+        "M": {
+          "outcome": "match",
+          "size_label": "M",
+          "reasons": [
+            "Approximate fit based on size M. The product is listed in this size.",
+            "The demo chart is sample data, not independently verified."
+          ]
+        },
+        "L": {
+          "outcome": "match",
+          "size_label": "L",
+          "reasons": [
+            "Approximate fit based on size L. The product is listed in this size.",
+            "The demo chart is sample data, not independently verified."
+          ]
+        },
+        "XL": {
+          "outcome": "match",
+          "size_label": "XL",
+          "reasons": [
+            "Approximate fit based on size XL. The product is listed in this size.",
+            "The demo chart is sample data, not independently verified."
+          ]
+        },
+        "none": {
+          "outcome": "uncertain",
+          "size_label": null,
+          "reasons": [
+            "Add your Bottoms size."
+          ]
+        }
+      },
+      "personal_fit": {
+        "outcome": "uncertain",
+        "size_label": null,
+        "reasons": [
+          "The demo chart is a body chart, so it needs body measurements.",
+          "The demo chart doesn't list inseam.",
+          "Add your waist.",
+          "Add your hips."
+        ]
+      }
+    },
+    {
+      "id": "levis-baggy-jeans",
+      "name": "Levi's baggy jeans",
+      "product_type": "Jeans",
+      "category": "bottoms",
+      "price_cents": 5500,
+      "currency": "EUR",
+      "sold_sizes": [
+        "29/32",
+        "30/32",
+        "30/34"
+      ],
+      "input_url": "https://merchandizable.sumupstore.com/produkt/levis-baggy-jeans",
+      "product_url": "https://merchandizable.sumupstore.com/produkt/levis-baggy-jeans",
+      "quick_fit": {
+        "XS": {
+          "outcome": "uncertain",
+          "size_label": null,
+          "reasons": [
+            "This product isn't listed in size XS."
+          ]
+        },
+        "S": {
+          "outcome": "uncertain",
+          "size_label": null,
+          "reasons": [
+            "This product isn't listed in size S."
+          ]
+        },
+        "M": {
+          "outcome": "uncertain",
+          "size_label": null,
+          "reasons": [
+            "This product isn't listed in size M."
+          ]
+        },
+        "L": {
+          "outcome": "uncertain",
+          "size_label": null,
+          "reasons": [
+            "This product isn't listed in size L."
+          ]
+        },
+        "XL": {
+          "outcome": "uncertain",
+          "size_label": null,
+          "reasons": [
+            "This product isn't listed in size XL."
+          ]
+        },
+        "none": {
+          "outcome": "uncertain",
+          "size_label": null,
+          "reasons": [
+            "Add your Bottoms size."
+          ]
+        }
+      },
+      "personal_fit": {
+        "outcome": "uncertain",
+        "size_label": null,
+        "reasons": [
+          "This product uses waist/length sizes, which the demo chart doesn't describe."
+        ]
+      }
+    }
+  ]
+}
