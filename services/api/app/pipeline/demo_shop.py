@@ -1,4 +1,4 @@
-# ruff: noqa: RUF001, RUF003  (en dashes are printed size labels)
+# ruff: noqa: RUF001  (en dashes are printed size labels)
 """Merchandizable: the fictional demonstration shop of the mock-first prototype (docs/redesign-plan.md §11).
 
 Its chart is sample data with its own size labels, so it stays apart from the global catalog: XXS, XXL,
@@ -17,6 +17,7 @@ from app.pipeline.models import Basis, Dimension, FitCategory, FitOutcome, Quick
 
 _D = Dimension
 _NO_RULES = "No fit rules for this product type yet."
+_WAIST_LENGTH = "This product uses waist/length sizes, which the demo chart doesn't describe."
 _UNVERIFIED = "The demo chart is sample data, not independently verified."
 
 
@@ -178,12 +179,20 @@ def _sold_rows(product: DemoProduct) -> list[ChartRow]:
     return [r for s in product.sold_sizes if (r := DEMO_CHART.row(s)) is not None]
 
 
+def _unlisted(needed: frozenset[Dimension]) -> list[str]:
+    return [
+        f"The demo chart doesn't list {d.value}."
+        for d in Dimension
+        if d in needed and not DEMO_CHART.lists(d)
+    ]
+
+
 def _gaps(needed: frozenset[Dimension], mine: Mapping[Dimension, float]) -> list[str]:
     """What the comparison lacks. Nothing here is ever filled in with a guess."""
-    in_order = [d for d in Dimension if d in needed]
-    unlisted = [f"The demo chart doesn't list {d.value}." for d in in_order if not DEMO_CHART.lists(d)]
-    missing = [f"Add your {d.value}." for d in in_order if DEMO_CHART.lists(d) and d not in mine]
-    return unlisted + missing
+    missing = [
+        f"Add your {d.value}." for d in Dimension if d in needed and DEMO_CHART.lists(d) and d not in mine
+    ]
+    return _unlisted(needed) + missing
 
 
 def _compare(
@@ -215,7 +224,7 @@ def personal_fit(product: DemoProduct, measurements: Mapping[Dimension, Measurem
         return _uncertain(_NO_RULES)
     rows = _sold_rows(product)
     if not rows:
-        return _uncertain("This product uses waist/length sizes, which the demo chart doesn't describe.")
+        return _uncertain(_WAIST_LENGTH)
     rule = rule_for(product.category)
     # A garment measurement says nothing about a body chart, so it counts as missing.
     mine = {d: m.value_cm for d, m in measurements.items() if m.basis is DEMO_CHART.basis}
@@ -223,6 +232,16 @@ def personal_fit(product: DemoProduct, measurements: Mapping[Dimension, Measurem
     if not any(d in mine and DEMO_CHART.lists(d) for d in rule.critical):
         return _uncertain("The demo chart is a body chart, so it needs body measurements.", *gaps)
     return _compare(rows, rule, mine, gaps)
+
+
+def _browser_personal_fit(product: DemoProduct) -> DemoFit:
+    """The browser can't run personal_fit, so it may only state what the chart lacks for anyone."""
+    if product.category is None:
+        return _uncertain(_NO_RULES)
+    if not _sold_rows(product):
+        return _uncertain(_WAIST_LENGTH)
+    rule = rule_for(product.category)
+    return _uncertain(*_unlisted(rule.critical | rule.secondary))
 
 
 def _fit_out(fit: DemoFit) -> dict[str, Any]:
@@ -248,8 +267,7 @@ def _product_out(product: DemoProduct) -> dict[str, Any]:
         "input_url": product.input_url,
         "product_url": product.product_url,
         "quick_fit": _quick_outcomes(product),
-        # The browser can't run this comparison, so it shows what the chart can't answer for anyone.
-        "personal_fit": _fit_out(personal_fit(product, {})),
+        "personal_fit": _fit_out(_browser_personal_fit(product)),
     }
 
 

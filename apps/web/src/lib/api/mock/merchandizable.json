@@ -238,10 +238,7 @@
         "outcome": "uncertain",
         "size_label": null,
         "reasons": [
-          "The demo chart is a body chart, so it needs body measurements.",
-          "The demo chart doesn't list shoulders.",
-          "Add your chest.",
-          "Add your waist."
+          "The demo chart doesn't list shoulders."
         ]
       }
     },
@@ -315,10 +312,7 @@
         "outcome": "uncertain",
         "size_label": null,
         "reasons": [
-          "The demo chart is a body chart, so it needs body measurements.",
-          "The demo chart doesn't list inseam.",
-          "Add your waist.",
-          "Add your hips."
+          "The demo chart doesn't list inseam."
         ]
       }
     },

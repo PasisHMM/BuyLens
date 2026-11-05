@@ -231,7 +231,12 @@ def test_fixture_holds_every_outcome_the_browser_may_show() -> None:
     assert list(sweater["quick_fit"]) == [*LETTERS, "none"]
     assert sweater["quick_fit"]["M"]["outcome"] == "match"
     assert sweater["quick_fit"]["none"]["outcome"] == "uncertain"
-    assert sweater["personal_fit"]["outcome"] == "uncertain"
+    # Saying what the chart lacks holds for everyone; asking for a measurement might not.
+    assert sweater["personal_fit"] == {
+        "outcome": "uncertain",
+        "size_label": None,
+        "reasons": ["The demo chart doesn't list shoulders."],
+    }
     jeans = next(p for p in fixture["products"] if p["id"] == "levis-baggy-jeans")
     assert jeans["quick_fit"]["M"]["outcome"] == "uncertain"
 
