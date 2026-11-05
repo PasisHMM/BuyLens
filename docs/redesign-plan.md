@@ -1,6 +1,6 @@
 # Buy Lens Redesign Plan
 
-> **Status:** decisions locked 2026-10-29; MVP decisions added the same day (§2.9–2.13, §5, §6c, §8, §9). Final MVP decisions applied: inclusive size boundaries, German stores, free sources only, Quick Fit sizes per category, **no market percentages**, **firsthand retail only**. Phase 0 and Phase 1 done. Next step: Phase 2 (execution plan in §9, awaiting approval).
+> **Status:** decisions locked 2026-10-29; MVP decisions added the same day (§2.9–2.13, §5, §6c, §8, §9). Final MVP decisions applied: inclusive size boundaries, German stores, free sources only, Quick Fit sizes per category, **no market percentages**, **firsthand retail only**. Phase 0 and Phase 1 done. Next step: Phase 2 (execution plan in §9, awaiting approval). Phase 9 (admin panel) added to the roadmap on 2026-11-05 as planned, not started work (§10).
 > **Direction:** Buy Lens is a user-controlled, evidence-based clothing shopping analysis tool. It helps people decide; it never decides for them.
 
 ---
@@ -227,6 +227,7 @@ Every unit follows the same rules:
 | ~~**6 Secondhand**~~ | **Postponed until after the MVP** (§2.5). No work planned. | — | — |
 | **7 Feedback on the server** | Feedback endpoint, `fit_memory` adjustment shown to the user | Saving twice changes nothing; adjustment capped; feedback survives a mode switch | Feedback is no longer browser-only |
 | **8 Clean-up** | Migration B, docs, methodology page, final quality report | Migration and RLS tests | No verdict code or columns left |
+| **9 Admin panel & no-code management** | See **§10**. Secure visual editing of rule parameters, informational pages, limited layout and product-type settings, with preview, validation and rollback. **Not started; not part of the MVP.** | See §10.5 | The owner can change an allowed value, preview its effect, publish it and roll it back without touching source code, and the engine still runs without the admin interface |
 
 **Moved:** the budget moves from Phase 6 to Phase 4, because ranking sorts by "within budget" and the homepage needs the field. The currency fix lands in Phase 4 with the new price output.
 
@@ -248,7 +249,7 @@ Every unit follows the same rules:
 
 **Frontend testing rule:** new and changed components get behaviour tests; old code is not back-filled. `npm run lint`, `typecheck`, `test` and `build` pass after every unit.
 
-**Estimate:** about 6–8 weeks for one developer. The smallest usable version (Phases 2–4) takes about 4 weeks.
+**Estimate:** about 6–8 weeks for one developer. The smallest usable version (Phases 2–4) takes about 4 weeks. Phase 9 is not included: it adds about 5–6 weeks (§10.4).
 
 ---
 
@@ -349,6 +350,7 @@ We will not fake a browser identity, use a headless browser to get past blocks, 
 13. ~~Web tooling~~: **decided**. `@testing-library/react` and `jsdom` approved. No zod: use OpenAPI types plus hand-written guards.
 14. **R1: store access.** None of the five stores lets our bot read product pages (§6c). Choose the way to get page data: browser extension or bookmarklet, manual paste, or partner feeds.
 15. **Personal Fit minimum:** proposal: Personal Fit needs **at least one** measurement, and missing critical ones give UNCERTAIN at check time. Requiring every critical measurement would reject today's saved profiles, which have no hips (§9).
+16. **Phase 9 decisions:** none blocks Phases 2–8; see §10.8.
 
 ---
 
@@ -506,3 +508,161 @@ Rules stay in Python; every component only displays what the API returns. "Phase
   - dresses and outerwear as types;
   - payments.
 - **Product decision (any time):** how live page data is obtained (R1).
+
+---
+
+## 10. Phase 9: Admin panel & no-code management (planned, not started)
+
+**Objective:** the project owner manages analysis rule parameters, website content and selected layout settings through a secure visual interface, without changing source code.
+
+**Status:** roadmap entry only. Nothing here is implemented, and no phase before it changes scope. It starts after Phase 8 and needs its own approved execution plan.
+
+### 10.1 Scope
+
+| # | Area | Included | Not included |
+|---|---|---|---|
+| 1 | **Rule editor** | Parameters from the allow-list in §10.3, each with a type, a range and an explanation | Formulas, scripts, expressions, new rule types |
+| 2 | **Content** | FAQ, About, Help and similar pages, built from typed blocks | Raw HTML, scripts, embeds |
+| 3 | **Layout** | Show, hide, order and fill predefined sections; a choice of preset styles | Free-form page building, custom CSS |
+| 4 | **Product types** | Labels, on/off, and the type → fit category map within existing categories | New fit categories or measurements (these need code and tests) |
+| 5 | **Safe changes** | Draft, validate, preview, publish, roll back, change history | Scheduled publishing, approval chains |
+| 6 | **Access** | One or more named admins, checked on the server | Roles beyond "admin", self-service admin sign-up |
+| 7 | **Tests** | Configuration validation, rule behaviour with published values, access control | |
+
+### 10.2 Architecture
+
+```
+admin web UI (forms only: no rules, no validation decisions)
+      │ admin API
+backend (Python)
+  validate → preview → publish ──► rule_set_versions (immutable)
+                                        │ active version, read at the start of each check
+  defaults in code (version-controlled) ─┤
+                                        ▼
+  frozen RuleSet ──► pure engine: fit · price · reliability · ranking
+```
+
+**Requirements:**
+1. **The engine doesn't know the admin panel exists.** Engine functions receive a frozen `RuleSet` as an argument. They don't read the database, and they run and test without the admin code.
+2. **Rules stay in Python.** Published configuration is plain data that Python parses and validates. The rule behaviour itself stays in code, so "the Python backend is the only place rules live" (§1) still holds.
+3. **No executable input.** Configuration holds only typed values from an allow-list. Unknown keys are rejected. Nothing stored is ever evaluated as code.
+4. **Defaults stay in version control.** `measurements.py`, `taxonomy.py` and the other rule modules hold the defaults. With no published version, the product behaves as the code says.
+5. **Versions are immutable.** Each publish stores a complete snapshot with a schema version, author, time and note. Rollback publishes an older snapshot as a new version, so history is never rewritten.
+6. **One check uses one version.** A check reads the active version once at the start, and `check_runs.analysis_version` records it. Past results keep the version they ran with and are never recalculated.
+7. **Validated twice.** A snapshot is validated when published and again when loaded. If the stored version is invalid or written for an incompatible schema, the check uses the code defaults, records that in `analysis_version`, and logs an error.
+8. **Drift is visible.** When a code release changes a default that a published version overrides, the panel shows the difference. Neither side changes silently.
+
+**Access control:**
+- The admin role comes from `app_metadata` in the Supabase token, which only the server can set. It's never read from `user_metadata`, which users can edit.
+- Anonymous sessions are always refused.
+- A `require_admin` dependency sits beside `current_user` in `auth.py`. The API is the real gate; hiding `/admin` pages is only a convenience.
+- Row-level security gives public users read access to published rows only. Drafts, history and the audit log are admin-only.
+- Every publish and rollback writes an audit entry with who, when and what changed.
+
+### 10.3 What can be edited
+
+| Group | Editable | Locked in code (product decisions) |
+|---|---|---|
+| **Fit** | Tolerance per fit category and basis; stretch allowance | Quick Fit never returns MISMATCH; inclusive size boundaries; no fit percentages; attributes never cause a MISMATCH; a measurement outside the plausible range is treated as a unit mix-up |
+| **Price** | Shipping estimate rules for verified stores; default budget suggestion | No market percentages or average; no currency conversion; only EUR offers are checked against the budget |
+| **Reliability** | Minimum review count (default 5); tag counts behind each band | Tags must quote review text word for word; the band comes from the rubric, never from the AI; no percentages |
+| **Ranking** | Nothing | Fit group → budget → total cost → band |
+| **Product types** | Labels, on/off, type → existing fit category | At most 3 attribute groups per type; controlled vocabulary; no fit rules without approved values |
+
+Every editable value has a range. Example checks: a tolerance must be above 0 and within its range; thresholds must stay in order, so Yellow can't be stricter than Red.
+
+The "Price" and "Reliability" lists are provisional: Phases 4 and 5 define which parameters exist. Phase 9's execution plan confirms this table against the code at that time.
+
+**Preview:** the backend runs the candidate rule set and the active one over a version-controlled set of sample scenarios and shows which outcomes changed and why. Publishing is blocked if validation fails or a locked-behaviour scenario breaks (for example, a Quick Fit scenario returning MISMATCH).
+
+**Content and layout:** both use one registry of typed blocks (heading, paragraph, list, link, image, FAQ item, plus predefined sections such as the hero). The server validates blocks against that registry, and React renders them as text, so stored content can't inject HTML. The check form can't be hidden or removed, and links allow `https` and internal paths only.
+
+### 10.4 Development units and effort
+
+Estimates are working days for one developer, assuming the §10.6 practices were kept.
+
+| # | Unit | Depends on | Days |
+|---|---|---|---|
+| P9-1 | `RuleSet` schema, ranges, locked rules; defaults built from existing code | Phases 3–5 | 2 |
+| P9-2 | Engine runs from a `RuleSet`; tests prove default results don't change | P9-1 | 1 |
+| P9-3 | Migration: versions, content, audit tables, RLS | P9-1, Phase 8 | 1.5 |
+| P9-4 | Admin access: `require_admin`, token claim, first-admin setup, second factor | — | 1.5 |
+| P9-5 | Draft, publish and rollback API; check reads the active version | P9-2, P9-3, P9-4 | 2.5 |
+| P9-6 | Preview: sample scenarios, outcome comparison, publish gate | P9-5 | 2 |
+| P9-7 | Admin shell: navigation, version history, rollback, audit view | P9-4, P9-5 | 2 |
+| P9-8 | Rule editor screens | P9-6, P9-7 | 3 |
+| P9-9 | Block registry, content API, public page rendering | P9-3 | 2.5 |
+| P9-10 | Content editor with preview and rollback | P9-7, P9-9 | 2 |
+| P9-11 | Layout: predefined sections and presets on the homepage | P9-9, P9-10 | 2.5 |
+| P9-12 | Product-type configuration | P9-5, P9-8 | 2 |
+| P9-13 | End-to-end tests, quality gates, docs and glossary | All | 1.5 |
+| | **Total** | | **25.5 days (about 5–6 weeks)** |
+
+**Smaller first release:** deferring P9-11 and P9-12 saves 4.5 days and leaves a working rule editor and content manager (about 4 weeks).
+
+**External dependencies:**
+- **Live backend and Supabase.** The Vercel prototype reads fixture files (§2.7), so a published rule change can't reach it until the fixtures are regenerated. Phase 9 needs live mode, which depends on the store-access decision (R1) and on separate approval for remote migrations.
+- **No new paid service and no new runtime library** without approval. Typed blocks avoid the need for a Markdown renderer.
+
+### 10.5 Tests to write first
+
+- **Rules:** unknown key rejected; value outside its range rejected; thresholds out of order rejected; a code-like string in any field rejected as an invalid type.
+- **Engine independence:** the engine runs with the admin code absent; with no published version, results equal the code defaults; the same input and version always give the same result.
+- **Behaviour:** a wider tolerance turns a sample MISMATCH into a MATCH, and Quick Fit still can't return MISMATCH under any allowed configuration.
+- **Versions:** publishing twice with the same request makes one version; rollback restores identical results and adds a new history entry; a check that started before a publish finishes on its original version; a corrupted stored version falls back to defaults and is recorded.
+- **Access:** anonymous, signed-in non-admin and `user_metadata`-only "admin" users all get 403; RLS hides drafts from the public; every publish writes an audit entry.
+- **Content and layout:** an unknown block type is rejected; markup in text renders as text; a `javascript:` link is rejected; the check form can't be removed.
+- **Product types:** a mapping to a nonexistent fit category is rejected; a disabled type gives UNCERTAIN with a reason.
+
+### 10.6 Practices to preserve during Phases 2–8
+
+None of these adds scope or changes a phase. They are ways to write code those phases already plan, so Phase 9 stays cheap. Nothing admin-related gets built early.
+
+| Phase | Practice | Why it matters later |
+|---|---|---|
+| 2 | Keep the web app reading ranges and rules only from `GET /v1/measurements` (already planned) | Published values reach the UI with no frontend change |
+| 2, 4 | Build homepage and results parts as self-contained components driven by props | They can become registry sections without a rewrite |
+| 3 | Fit logic receives its rule values as an argument and stays pure, rather than reading `CATEGORY_RULES` deep inside | P9-2 stays 1 day instead of a refactor |
+| 3 | Keep `taxonomy.py` as data tables, not branching code | Product-type settings can overlay plain data |
+| 3 | Reason text takes its numbers from the rule in use, never a typed "2 cm" | Explanations stay true after a tolerance change |
+| 4, 5 | Give each threshold one named value in its rule module, with no copies or inline numbers | The allow-list in §10.3 can point at single values |
+| 4 | Make `analysis_version` a plain, extensible identifier (already planned) | It can later carry the published version too |
+| 4–5 | Cache evidence only (pages, extracted data, review tags), never rule outcomes | A publish takes effect at once, with no invalidation logic |
+| 3–5 | Use scenario-style tests for the rules | They seed the preview's sample scenarios |
+| 8 | On the methodology page, read values from the backend catalog wherever it provides them. The current page hand-types the old 25% and 5% thresholds | Published numbers and public explanations can't disagree |
+
+**Deliberately not done early:** no `RuleSet` database table, no admin role, no block registry, no feature flags, no CMS.
+
+### 10.7 Acceptance criteria
+
+1. The owner signs in as admin, changes an allowed value, sees its effect in preview, publishes, and new checks use it, with no code change or deployment.
+2. Rollback restores earlier behaviour in one action, and history shows who changed what and when.
+3. Non-admins can't reach any admin API or draft (tests for anonymous, ordinary and forged-metadata users).
+4. The rule editor can't store anything outside the allow-list, and locked behaviours hold under every allowed configuration.
+5. The engine's tests pass with no admin code, and with no published version results equal the code defaults.
+6. Every check records the version it used. Past results don't change after a publish.
+7. FAQ, About and Help can be edited, previewed and rolled back. Stored content can't inject HTML or scripts.
+8. Layout changes are limited to predefined sections and presets, and the check form always remains.
+9. Crapper, Dryer and Mutator gates pass, along with the backend and web checks and the contract check.
+
+### 10.8 Decisions needed before Phase 9 starts
+
+| # | Decision | Recommendation |
+|---|---|---|
+| 1 | Should critical and secondary measurement sets be editable? Moving a measurement changes what can cause a MISMATCH | No in the first release: edit tolerances only |
+| 2 | Allowed tolerance range | 0.5–5 cm, for owner sign-off when the execution plan is written |
+| 3 | Content format: typed blocks or Markdown (which needs a new renderer library) | Typed blocks: no new dependency, one model for content and layout |
+| 4 | Admin sign-in | Supabase email login plus an authenticator-app second factor, if that's free on the plan in use; otherwise report back rather than pay |
+| 5 | Preview data: sample scenarios only, or real user checks as well | Sample scenarios only, because real checks contain people's body measurements |
+| 6 | Full scope, or the smaller first release without layout and product types | Smaller first release, then add the rest |
+| 7 | Timing: strictly after Phase 8, or brought forward | After Phase 8, because it needs the live backend and the final rule set |
+
+### 10.9 Risks
+
+| # | Risk | Mitigation |
+|---|---|---|
+| A1 | An owner edit worsens results for every user | Ranges, publish gate, preview, one-action rollback |
+| A2 | The admin panel is a high-value target | Server-side role, second factor, audit log, no code execution, minimal API surface |
+| A3 | A no-code tool grows into a rule language | Allow-list only. New kinds of rule go through code, tests and review |
+| A4 | Editable values drift from the signed-off decisions in §2 | Locked list in §10.3, enforced by tests; drift shown in the panel |
+| A5 | Rule modules change in Phases 3–5 and this plan goes stale | §10.3 is provisional and re-verified in the execution plan |
