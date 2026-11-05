@@ -1,17 +1,6 @@
-"""Deterministic product attributes: category, fabric stretch, fit, and size-label parsing."""
+"""Deterministic product attributes: fabric stretch, fit, wash, and size-label parsing."""
 
 import re
-
-CATEGORY_KEYWORDS: list[tuple[str, tuple[str, ...]]] = [
-    ("jeans", ("jean", "denim")),
-    ("shorts", ("shorts",)),  # not "short" — "short sleeve shirt" is a top
-    ("skirts", ("skirt",)),
-    ("pants", ("pant", "trouser", "chino", "slack", "legging", "jogger")),
-    ("dresses", ("dress",)),
-    ("tops", ("shirt", "tee", "t-shirt", "top", "blouse", "sweater", "hoodie", "knit")),
-    ("outerwear", ("jacket", "coat", "blazer", "parka")),
-]
-BOTTOMS = {"jeans", "pants", "shorts", "skirts"}
 
 STRETCH_FIBERS = ("elastane", "spandex", "lycra", "elasterell", "t400")
 FIT_WORDS = (
@@ -28,14 +17,6 @@ FIT_WORDS = (
     "boyfriend",
 )
 WASH_WORDS = ("light wash", "medium wash", "dark wash", "black", "rinse", "raw", "acid wash", "stonewash")
-
-
-def infer_category(*texts: str | None) -> str | None:
-    blob = " ".join(t for t in texts if t).lower()
-    for category, words in CATEGORY_KEYWORDS:
-        if any(re.search(rf"\b{re.escape(w)}", blob) for w in words):
-            return category
-    return None
 
 
 def infer_stretch(fabric: str | None, *texts: str | None) -> bool | None:

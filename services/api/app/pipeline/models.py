@@ -29,7 +29,7 @@ class Basis(StrEnum):
 
 
 class FitMode(StrEnum):
-    """How a profile describes the user. Quick Fit sizes are approximate and never prove a mismatch."""
+    """How a profile describes the user. Quick Fit sizes are approximate; Personal Fit values are exact."""
 
     QUICK_FIT = "quick_fit"
     PERSONAL_FIT = "personal_fit"
@@ -38,9 +38,9 @@ class FitMode(StrEnum):
 class FitOutcome(StrEnum):
     """Result of comparing a profile with one listing's size data."""
 
-    MATCH = "match"  # every critical measurement within tolerance
-    UNCERTAIN = "uncertain"  # data missing or insufficient; never treated as a mismatch
-    MISMATCH = "mismatch"  # a critical measurement is outside tolerance (Personal Fit only)
+    MATCH = "match"  # one size clearly fits, with nothing known against it
+    UNCERTAIN = "uncertain"  # between sizes, an additional concern, or not enough evidence
+    MISMATCH = "mismatch"  # a critical measurement is verified outside the permitted range
 
 
 class FitCategory(StrEnum):
@@ -67,14 +67,14 @@ class QuickSize(StrEnum):
 
 StepId = Literal["product", "prices", "fit", "seller"]
 STEPS: tuple[StepId, ...] = ("product", "prices", "fit", "seller")
-# Singular nouns for copy: "a hip measurement", "Hip measurement unavailable".
-DIMENSION_NOUN = {"waist": "waist", "inseam": "inseam", "hips": "hip"}
 
 
 # ── Extraction ───────────────────────────────────────────────────────────────
 class Measure(BaseModel):
-    cm: float
+    cm: float  # the published value, or the middle of a published range
     basis: Basis
+    min_cm: float | None = None  # the published range, when the chart gives one
+    max_cm: float | None = None
 
 
 class SizeRow(BaseModel):
@@ -168,43 +168,40 @@ class PriceCheck(BaseModel):
     shipping_cents: int | None  # None → "Shipping unknown"
     total_cents: int  # listing + known shipping (a lower bound when shipping is unknown)
     total_is_estimate: bool
-    market_avg_cents: int | None  # excludes shipping; None with fewer than 3 comparables
-    delta_cents: int | None  # negative = below market
-    delta_pct: float | None
-    comparable_count: int
 
 
-class FitMatch(StrEnum):
-    OK = "ok"
-    TIGHT = "tight"
-    LOOSE = "loose"
-    SHORT = "short"
-    LONG = "long"
-    MISSING = "missing"
+class DimensionStatus(StrEnum):
+    INSIDE = "inside"  # within the published range
+    NEAR = "near"  # outside the range, within the approved tolerance
+    OUTSIDE = "outside"  # beyond the tolerance
+    MISSING = "missing"  # no comparable value: never counts against a product
 
 
 class FitRow(BaseModel):
     dimension: str
-    user_cm: float
-    garment_cm: float | None  # None → "—"
-    basis: Basis | None
-    match: FitMatch
-    room_cm: float | None  # chart - you
+    role: Literal["critical", "secondary"] = "critical"
+    user_cm: float | None = None  # None in Quick Fit: a size label says nothing exact about a person
+    chart_min_cm: float | None = None
+    chart_max_cm: float | None = None
+    basis: Basis | None = None
+    status: DimensionStatus = DimensionStatus.MISSING
 
 
 class FitCheck(BaseModel):
-    size_label: str  # "W26 / L30"
-    rows: list[FitRow]
-    confidence: Literal["high", "medium", "limited"]
-    alerts: list[str]
-    notes: str
+    # Defaults let results stored before this contract load as "not enough evidence".
+    mode: FitMode = FitMode.PERSONAL_FIT
+    outcome: FitOutcome = FitOutcome.UNCERTAIN
+    approximate: bool = False
+    size_label: str | None = None  # "W26 / L30"; "S / M" when between sizes
+    rows: list[FitRow] = Field(default_factory=list)
+    reasons: list[str] = Field(default_factory=list)
 
 
 class SellerRisk(BaseModel):
     seller_name: str
     is_official: bool
     trust_rating: float | None
-    level: Literal["low", "medium", "high"]
+    level: Literal["low", "medium", "high"] | None  # None: not enough data to say
     review_rating: float | None
     review_count: int | None
     return_policy: ReturnPolicy
@@ -218,29 +215,7 @@ class RankedOption(BaseModel):
     price: PriceCheck
     fit: FitCheck
     risk: SellerRisk
-    score: float
     summary: str = ""
-
-
-class Verdict(StrEnum):
-    BUY = "BUY"
-    CONSIDER = "CONSIDER"
-    SKIP = "SKIP"
-
-
-class Decision(BaseModel):
-    verdict: Verdict
-    reasons: list[str]  # reason codes, e.g. FIT_DATA_MISSING
-    missing_dimensions: list[str] = Field(default_factory=list)
-
-
-class Narrative(BaseModel):
-    headline: str
-    explanation: str
-    why_not_buy: str | None
-    why_not_skip: str | None
-    option_summaries: list[str]
-    written_by: Literal["llm", "template"]
 
 
 # ── Run context ──────────────────────────────────────────────────────────────
@@ -251,15 +226,8 @@ class FitMemoryEntry(BaseModel):
     ease_adjust_cm: float
 
 
-class DecisionMemory(BaseModel):
-    price_sensitivity: float = 0.5
-    risk_aversion: float = 0.5
-    fit_strictness: float = 0.5
-
-
 class MemorySnapshot(BaseModel):
     fit: list[FitMemoryEntry] = Field(default_factory=list)
-    decision: DecisionMemory = Field(default_factory=DecisionMemory)
 
     def ease_adjust(self, brand_id: UUID | None, category: str | None, dimension: str) -> float:
         """Brand-specific memory wins; cross-brand memory (brand_id = None) applies at half weight."""
@@ -279,14 +247,9 @@ class MemorySnapshot(BaseModel):
 
 class ProfileSnapshot(BaseModel):
     unit: Literal["in", "cm"]
-    measurements_cm: dict[str, float]
+    measurements_cm: dict[str, float]  # body measurements
     brand_ids: list[UUID] = Field(default_factory=list)
+    garment_cm: dict[str, float] = Field(default_factory=dict)  # measured from a garment that fits
     # Defaults keep runs queued before Quick Fit existed valid.
     fit_mode: FitMode = FitMode.PERSONAL_FIT
     quick_sizes: dict[FitCategory, QuickSize] = Field(default_factory=dict)
-
-
-class SizeChoice(BaseModel):
-    label: str
-    display: str  # "W26 / L30"
-    row: SizeRow | None

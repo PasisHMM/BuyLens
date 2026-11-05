@@ -168,14 +168,78 @@
       }
     ]
   },
+  "personal_samples": [
+    {
+      "id": "inside-size-s",
+      "label": "Inside size S",
+      "measurements": [
+        {
+          "dimension": "chest",
+          "value_cm": 86.0,
+          "basis": "body"
+        },
+        {
+          "dimension": "waist",
+          "value_cm": 70.0,
+          "basis": "body"
+        },
+        {
+          "dimension": "hips",
+          "value_cm": 95.0,
+          "basis": "body"
+        }
+      ]
+    },
+    {
+      "id": "on-the-s-m-line",
+      "label": "On the S/M line",
+      "measurements": [
+        {
+          "dimension": "chest",
+          "value_cm": 90.0,
+          "basis": "body"
+        },
+        {
+          "dimension": "waist",
+          "value_cm": 74.0,
+          "basis": "body"
+        },
+        {
+          "dimension": "hips",
+          "value_cm": 97.5,
+          "basis": "body"
+        }
+      ]
+    },
+    {
+      "id": "above-the-listed-sizes",
+      "label": "Above the listed sizes",
+      "measurements": [
+        {
+          "dimension": "chest",
+          "value_cm": 125.0,
+          "basis": "body"
+        },
+        {
+          "dimension": "waist",
+          "value_cm": 125.0,
+          "basis": "body"
+        },
+        {
+          "dimension": "hips",
+          "value_cm": 135.0,
+          "basis": "body"
+        }
+      ]
+    }
+  ],
   "products": [
     {
       "id": "demo-relaxed-sweater",
       "name": "Demo Relaxed Sweater",
-      "product_type": "Sweater",
-      "category": "tops",
-      "price_cents": 4900,
-      "currency": "EUR",
+      "product_type": "sweaters",
+      "product_type_label": "Sweaters",
+      "fit_category": "tops",
       "sold_sizes": [
         "XS",
         "S",
@@ -184,71 +248,381 @@
         "XL"
       ],
       "input_url": "https://merchandizable.example/p/demo-relaxed-sweater",
-      "product_url": null,
+      "option": {
+        "rank": 1,
+        "listing_id": "fa1407e5-dfb1-5450-acf2-3c0f4acf64c0",
+        "seller": {
+          "name": "Merchandizable",
+          "domain": "merchandizable.example"
+        },
+        "url": "",
+        "total_cents": 4900,
+        "summary": "Demo shop",
+        "price_check": {
+          "currency": "EUR",
+          "listing_cents": 4900,
+          "shipping_cents": null,
+          "total_cents": 4900,
+          "total_is_estimate": true
+        },
+        "seller_risk": {
+          "seller_name": "Merchandizable",
+          "is_official": false,
+          "trust_rating": null,
+          "level": null,
+          "review_rating": null,
+          "review_count": null,
+          "return_policy": {
+            "verified": false,
+            "window_days": null,
+            "free": null,
+            "restocking_fee": null,
+            "title": null,
+            "details": null
+          },
+          "review_highlights": [],
+          "fit_signal": "unknown"
+        }
+      },
       "quick_fit": {
         "XS": {
-          "outcome": "match",
-          "size_label": "XS",
-          "reasons": [
-            "Approximate fit based on size XS. The product is listed in this size.",
-            "The demo chart is sample data, not independently verified."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": "XS",
+            "rows": [
+              {
+                "dimension": "shoulders",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "The size chart doesn't list shoulders."
+            ]
+          }
         },
         "S": {
-          "outcome": "match",
-          "size_label": "S",
-          "reasons": [
-            "Approximate fit based on size S. The product is listed in this size.",
-            "The demo chart is sample data, not independently verified."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": "S",
+            "rows": [
+              {
+                "dimension": "shoulders",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "The size chart doesn't list shoulders."
+            ]
+          }
         },
         "M": {
-          "outcome": "match",
-          "size_label": "M",
-          "reasons": [
-            "Approximate fit based on size M. The product is listed in this size.",
-            "The demo chart is sample data, not independently verified."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": "M",
+            "rows": [
+              {
+                "dimension": "shoulders",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "The size chart doesn't list shoulders."
+            ]
+          }
         },
         "L": {
-          "outcome": "match",
-          "size_label": "L",
-          "reasons": [
-            "Approximate fit based on size L. The product is listed in this size.",
-            "The demo chart is sample data, not independently verified."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": "L",
+            "rows": [
+              {
+                "dimension": "shoulders",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "The size chart doesn't list shoulders."
+            ]
+          }
         },
         "XL": {
-          "outcome": "match",
-          "size_label": "XL",
-          "reasons": [
-            "Approximate fit based on size XL. The product is listed in this size.",
-            "The demo chart is sample data, not independently verified."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": "XL",
+            "rows": [
+              {
+                "dimension": "shoulders",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "The size chart doesn't list shoulders."
+            ]
+          }
         },
         "none": {
-          "outcome": "uncertain",
-          "size_label": null,
-          "reasons": [
-            "Add your Tops size."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": null,
+            "rows": [],
+            "reasons": [
+              "Add your Tops size."
+            ]
+          }
         }
       },
       "personal_fit": {
-        "outcome": "uncertain",
-        "size_label": null,
-        "reasons": [
-          "The demo chart doesn't list shoulders."
-        ]
+        "group": "uncertain",
+        "fit": {
+          "mode": "personal_fit",
+          "outcome": "uncertain",
+          "approximate": false,
+          "size_label": null,
+          "rows": [
+            {
+              "dimension": "chest",
+              "role": "critical",
+              "user_cm": null,
+              "chart_min_cm": 78.0,
+              "chart_max_cm": 82.0,
+              "basis": "body",
+              "status": "missing"
+            },
+            {
+              "dimension": "shoulders",
+              "role": "critical",
+              "user_cm": null,
+              "chart_min_cm": null,
+              "chart_max_cm": null,
+              "basis": null,
+              "status": "missing"
+            },
+            {
+              "dimension": "waist",
+              "role": "secondary",
+              "user_cm": null,
+              "chart_min_cm": 64.0,
+              "chart_max_cm": 66.0,
+              "basis": "body",
+              "status": "missing"
+            },
+            {
+              "dimension": "sleeve",
+              "role": "secondary",
+              "user_cm": null,
+              "chart_min_cm": null,
+              "chart_max_cm": null,
+              "basis": null,
+              "status": "missing"
+            }
+          ],
+          "reasons": [
+            "The size chart doesn't list shoulders."
+          ]
+        }
+      },
+      "sample_fit": {
+        "inside-size-s": {
+          "group": "uncertain",
+          "fit": {
+            "mode": "personal_fit",
+            "outcome": "uncertain",
+            "approximate": false,
+            "size_label": "S",
+            "rows": [
+              {
+                "dimension": "chest",
+                "role": "critical",
+                "user_cm": 86.0,
+                "chart_min_cm": 82.0,
+                "chart_max_cm": 90.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "shoulders",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              },
+              {
+                "dimension": "waist",
+                "role": "secondary",
+                "user_cm": 70.0,
+                "chart_min_cm": 66.0,
+                "chart_max_cm": 74.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "sleeve",
+                "role": "secondary",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "The size chart doesn't list shoulders."
+            ]
+          }
+        },
+        "on-the-s-m-line": {
+          "group": "uncertain",
+          "fit": {
+            "mode": "personal_fit",
+            "outcome": "uncertain",
+            "approximate": false,
+            "size_label": "S / M",
+            "rows": [
+              {
+                "dimension": "chest",
+                "role": "critical",
+                "user_cm": 90.0,
+                "chart_min_cm": 82.0,
+                "chart_max_cm": 90.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "shoulders",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              },
+              {
+                "dimension": "waist",
+                "role": "secondary",
+                "user_cm": 74.0,
+                "chart_min_cm": 66.0,
+                "chart_max_cm": 74.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "sleeve",
+                "role": "secondary",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "Chest 90 cm fits both size S (82–90 cm) and size M (90–98 cm), so the right size isn't clear."
+            ]
+          }
+        },
+        "above-the-listed-sizes": {
+          "group": "hidden",
+          "fit": {
+            "mode": "personal_fit",
+            "outcome": "mismatch",
+            "approximate": false,
+            "size_label": null,
+            "rows": [
+              {
+                "dimension": "chest",
+                "role": "critical",
+                "user_cm": 125.0,
+                "chart_min_cm": 107.0,
+                "chart_max_cm": 119.0,
+                "basis": "body",
+                "status": "outside"
+              },
+              {
+                "dimension": "shoulders",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              },
+              {
+                "dimension": "waist",
+                "role": "secondary",
+                "user_cm": 125.0,
+                "chart_min_cm": 93.0,
+                "chart_max_cm": 105.0,
+                "basis": "body",
+                "status": "outside"
+              },
+              {
+                "dimension": "sleeve",
+                "role": "secondary",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "Chest 125 cm is outside size XL, the closest listed size (107–119 cm), beyond the ±2 cm tolerance."
+            ]
+          }
+        }
       }
     },
     {
       "id": "demo-wide-leg-trousers",
       "name": "Demo Wide-Leg Trousers",
-      "product_type": "Pants",
-      "category": "bottoms",
-      "price_cents": 5900,
-      "currency": "EUR",
+      "product_type": "pants",
+      "product_type_label": "Pants",
+      "fit_category": "bottoms",
       "sold_sizes": [
         "XS",
         "S",
@@ -258,128 +632,962 @@
         "XXL"
       ],
       "input_url": "https://merchandizable.example/p/demo-wide-leg-trousers",
-      "product_url": null,
+      "option": {
+        "rank": 1,
+        "listing_id": "56c349ec-b3c7-5c45-98b9-51054ab2cfb1",
+        "seller": {
+          "name": "Merchandizable",
+          "domain": "merchandizable.example"
+        },
+        "url": "",
+        "total_cents": 5900,
+        "summary": "Demo shop",
+        "price_check": {
+          "currency": "EUR",
+          "listing_cents": 5900,
+          "shipping_cents": null,
+          "total_cents": 5900,
+          "total_is_estimate": true
+        },
+        "seller_risk": {
+          "seller_name": "Merchandizable",
+          "is_official": false,
+          "trust_rating": null,
+          "level": null,
+          "review_rating": null,
+          "review_count": null,
+          "return_policy": {
+            "verified": false,
+            "window_days": null,
+            "free": null,
+            "restocking_fee": null,
+            "title": null,
+            "details": null
+          },
+          "review_highlights": [],
+          "fit_signal": "unknown"
+        }
+      },
       "quick_fit": {
         "XS": {
-          "outcome": "match",
-          "size_label": "XS",
-          "reasons": [
-            "Approximate fit based on size XS. The product is listed in this size.",
-            "The demo chart is sample data, not independently verified."
-          ]
+          "group": "matches",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "match",
+            "approximate": true,
+            "size_label": "XS",
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 64.0,
+                "chart_max_cm": 66.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 86.0,
+                "chart_max_cm": 90.0,
+                "basis": "body",
+                "status": "inside"
+              }
+            ],
+            "reasons": [
+              "Approximate fit based on size XS. The size chart publishes waist and hips for this size.",
+              "The demo chart is sample data, not independently verified."
+            ]
+          }
         },
         "S": {
-          "outcome": "match",
-          "size_label": "S",
-          "reasons": [
-            "Approximate fit based on size S. The product is listed in this size.",
-            "The demo chart is sample data, not independently verified."
-          ]
+          "group": "matches",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "match",
+            "approximate": true,
+            "size_label": "S",
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 66.0,
+                "chart_max_cm": 74.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 90.0,
+                "chart_max_cm": 97.5,
+                "basis": "body",
+                "status": "inside"
+              }
+            ],
+            "reasons": [
+              "Approximate fit based on size S. The size chart publishes waist and hips for this size.",
+              "The demo chart is sample data, not independently verified."
+            ]
+          }
         },
         "M": {
-          "outcome": "match",
-          "size_label": "M",
-          "reasons": [
-            "Approximate fit based on size M. The product is listed in this size.",
-            "The demo chart is sample data, not independently verified."
-          ]
+          "group": "matches",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "match",
+            "approximate": true,
+            "size_label": "M",
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 74.0,
+                "chart_max_cm": 82.5,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 97.5,
+                "chart_max_cm": 103.5,
+                "basis": "body",
+                "status": "inside"
+              }
+            ],
+            "reasons": [
+              "Approximate fit based on size M. The size chart publishes waist and hips for this size.",
+              "The demo chart is sample data, not independently verified."
+            ]
+          }
         },
         "L": {
-          "outcome": "match",
-          "size_label": "L",
-          "reasons": [
-            "Approximate fit based on size L. The product is listed in this size.",
-            "The demo chart is sample data, not independently verified."
-          ]
+          "group": "matches",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "match",
+            "approximate": true,
+            "size_label": "L",
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 82.5,
+                "chart_max_cm": 93.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 103.5,
+                "chart_max_cm": 110.5,
+                "basis": "body",
+                "status": "inside"
+              }
+            ],
+            "reasons": [
+              "Approximate fit based on size L. The size chart publishes waist and hips for this size.",
+              "The demo chart is sample data, not independently verified."
+            ]
+          }
         },
         "XL": {
-          "outcome": "match",
-          "size_label": "XL",
-          "reasons": [
-            "Approximate fit based on size XL. The product is listed in this size.",
-            "The demo chart is sample data, not independently verified."
-          ]
+          "group": "matches",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "match",
+            "approximate": true,
+            "size_label": "XL",
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 93.0,
+                "chart_max_cm": 105.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 110.5,
+                "chart_max_cm": 120.5,
+                "basis": "body",
+                "status": "inside"
+              }
+            ],
+            "reasons": [
+              "Approximate fit based on size XL. The size chart publishes waist and hips for this size.",
+              "The demo chart is sample data, not independently verified."
+            ]
+          }
         },
         "none": {
-          "outcome": "uncertain",
-          "size_label": null,
-          "reasons": [
-            "Add your Bottoms size."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": null,
+            "rows": [],
+            "reasons": [
+              "Add your Bottoms size."
+            ]
+          }
         }
       },
       "personal_fit": {
-        "outcome": "uncertain",
-        "size_label": null,
-        "reasons": [
-          "The demo chart doesn't list inseam."
-        ]
+        "group": "uncertain",
+        "fit": {
+          "mode": "personal_fit",
+          "outcome": "uncertain",
+          "approximate": false,
+          "size_label": null,
+          "rows": [
+            {
+              "dimension": "waist",
+              "role": "critical",
+              "user_cm": null,
+              "chart_min_cm": 64.0,
+              "chart_max_cm": 66.0,
+              "basis": "body",
+              "status": "missing"
+            },
+            {
+              "dimension": "hips",
+              "role": "critical",
+              "user_cm": null,
+              "chart_min_cm": 86.0,
+              "chart_max_cm": 90.0,
+              "basis": "body",
+              "status": "missing"
+            },
+            {
+              "dimension": "inseam",
+              "role": "secondary",
+              "user_cm": null,
+              "chart_min_cm": null,
+              "chart_max_cm": null,
+              "basis": null,
+              "status": "missing"
+            }
+          ],
+          "reasons": []
+        }
+      },
+      "sample_fit": {
+        "inside-size-s": {
+          "group": "matches",
+          "fit": {
+            "mode": "personal_fit",
+            "outcome": "match",
+            "approximate": false,
+            "size_label": "S",
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": 70.0,
+                "chart_min_cm": 66.0,
+                "chart_max_cm": 74.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": 95.0,
+                "chart_min_cm": 90.0,
+                "chart_max_cm": 97.5,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "inseam",
+                "role": "secondary",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "Your measurements are inside size S.",
+              "Not checked: inseam.",
+              "The demo chart is sample data, not independently verified."
+            ]
+          }
+        },
+        "on-the-s-m-line": {
+          "group": "uncertain",
+          "fit": {
+            "mode": "personal_fit",
+            "outcome": "uncertain",
+            "approximate": false,
+            "size_label": "S / M",
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": 74.0,
+                "chart_min_cm": 66.0,
+                "chart_max_cm": 74.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": 97.5,
+                "chart_min_cm": 90.0,
+                "chart_max_cm": 97.5,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "inseam",
+                "role": "secondary",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "Waist 74 cm fits both size S (66–74 cm) and size M (74–82.5 cm), so the right size isn't clear."
+            ]
+          }
+        },
+        "above-the-listed-sizes": {
+          "group": "hidden",
+          "fit": {
+            "mode": "personal_fit",
+            "outcome": "mismatch",
+            "approximate": false,
+            "size_label": null,
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": 125.0,
+                "chart_min_cm": 105.0,
+                "chart_max_cm": 117.5,
+                "basis": "body",
+                "status": "outside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": 135.0,
+                "chart_min_cm": 120.5,
+                "chart_max_cm": 131.0,
+                "basis": "body",
+                "status": "outside"
+              },
+              {
+                "dimension": "inseam",
+                "role": "secondary",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "Waist 125 cm is outside size XXL, the closest listed size (105–117.5 cm), beyond the ±2 cm tolerance.",
+              "Hips 135 cm is outside size XXL, the closest listed size (120.5–131 cm), beyond the ±2 cm tolerance."
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "demo-petite-trousers",
+      "name": "Demo Petite Trousers",
+      "product_type": "pants",
+      "product_type_label": "Pants",
+      "fit_category": "bottoms",
+      "sold_sizes": [
+        "XXS",
+        "XS"
+      ],
+      "input_url": "https://merchandizable.example/p/demo-petite-trousers",
+      "option": {
+        "rank": 1,
+        "listing_id": "e9cec71b-96b6-590d-9fb5-0f647c3a2b46",
+        "seller": {
+          "name": "Merchandizable",
+          "domain": "merchandizable.example"
+        },
+        "url": "",
+        "total_cents": 4500,
+        "summary": "Demo shop",
+        "price_check": {
+          "currency": "EUR",
+          "listing_cents": 4500,
+          "shipping_cents": null,
+          "total_cents": 4500,
+          "total_is_estimate": true
+        },
+        "seller_risk": {
+          "seller_name": "Merchandizable",
+          "is_official": false,
+          "trust_rating": null,
+          "level": null,
+          "review_rating": null,
+          "review_count": null,
+          "return_policy": {
+            "verified": false,
+            "window_days": null,
+            "free": null,
+            "restocking_fee": null,
+            "title": null,
+            "details": null
+          },
+          "review_highlights": [],
+          "fit_signal": "unknown"
+        }
+      },
+      "quick_fit": {
+        "XS": {
+          "group": "matches",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "match",
+            "approximate": true,
+            "size_label": "XS",
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 64.0,
+                "chart_max_cm": 66.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 86.0,
+                "chart_max_cm": 90.0,
+                "basis": "body",
+                "status": "inside"
+              }
+            ],
+            "reasons": [
+              "Approximate fit based on size XS. The size chart publishes waist and hips for this size.",
+              "The demo chart is sample data, not independently verified."
+            ]
+          }
+        },
+        "S": {
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": null,
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 66.0,
+                "chart_max_cm": 74.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 90.0,
+                "chart_max_cm": 97.5,
+                "basis": "body",
+                "status": "inside"
+              }
+            ],
+            "reasons": [
+              "This product isn't listed in size S, and a listed size might still fit."
+            ]
+          }
+        },
+        "M": {
+          "group": "hidden",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "mismatch",
+            "approximate": true,
+            "size_label": null,
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 74.0,
+                "chart_max_cm": 82.5,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 97.5,
+                "chart_max_cm": 103.5,
+                "basis": "body",
+                "status": "inside"
+              }
+            ],
+            "reasons": [
+              "Waist for size M is 74–82.5 cm. The closest listed size, XS, is 64–66 cm, too far apart for any measurement in your size to fit."
+            ]
+          }
+        },
+        "L": {
+          "group": "hidden",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "mismatch",
+            "approximate": true,
+            "size_label": null,
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 82.5,
+                "chart_max_cm": 93.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 103.5,
+                "chart_max_cm": 110.5,
+                "basis": "body",
+                "status": "inside"
+              }
+            ],
+            "reasons": [
+              "Waist for size L is 82.5–93 cm. The closest listed size, XS, is 64–66 cm, too far apart for any measurement in your size to fit."
+            ]
+          }
+        },
+        "XL": {
+          "group": "hidden",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "mismatch",
+            "approximate": true,
+            "size_label": null,
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 93.0,
+                "chart_max_cm": 105.0,
+                "basis": "body",
+                "status": "inside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": null,
+                "chart_min_cm": 110.5,
+                "chart_max_cm": 120.5,
+                "basis": "body",
+                "status": "inside"
+              }
+            ],
+            "reasons": [
+              "Waist for size XL is 93–105 cm. The closest listed size, XS, is 64–66 cm, too far apart for any measurement in your size to fit."
+            ]
+          }
+        },
+        "none": {
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": null,
+            "rows": [],
+            "reasons": [
+              "Add your Bottoms size."
+            ]
+          }
+        }
+      },
+      "personal_fit": {
+        "group": "uncertain",
+        "fit": {
+          "mode": "personal_fit",
+          "outcome": "uncertain",
+          "approximate": false,
+          "size_label": null,
+          "rows": [
+            {
+              "dimension": "waist",
+              "role": "critical",
+              "user_cm": null,
+              "chart_min_cm": 62.0,
+              "chart_max_cm": 64.0,
+              "basis": "body",
+              "status": "missing"
+            },
+            {
+              "dimension": "hips",
+              "role": "critical",
+              "user_cm": null,
+              "chart_min_cm": 82.0,
+              "chart_max_cm": 86.0,
+              "basis": "body",
+              "status": "missing"
+            },
+            {
+              "dimension": "inseam",
+              "role": "secondary",
+              "user_cm": null,
+              "chart_min_cm": null,
+              "chart_max_cm": null,
+              "basis": null,
+              "status": "missing"
+            }
+          ],
+          "reasons": []
+        }
+      },
+      "sample_fit": {
+        "inside-size-s": {
+          "group": "hidden",
+          "fit": {
+            "mode": "personal_fit",
+            "outcome": "mismatch",
+            "approximate": false,
+            "size_label": null,
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": 70.0,
+                "chart_min_cm": 64.0,
+                "chart_max_cm": 66.0,
+                "basis": "body",
+                "status": "outside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": 95.0,
+                "chart_min_cm": 86.0,
+                "chart_max_cm": 90.0,
+                "basis": "body",
+                "status": "outside"
+              },
+              {
+                "dimension": "inseam",
+                "role": "secondary",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "Waist 70 cm is outside size XS, the closest listed size (64–66 cm), beyond the ±2 cm tolerance.",
+              "Hips 95 cm is outside size XS, the closest listed size (86–90 cm), beyond the ±2 cm tolerance."
+            ]
+          }
+        },
+        "on-the-s-m-line": {
+          "group": "hidden",
+          "fit": {
+            "mode": "personal_fit",
+            "outcome": "mismatch",
+            "approximate": false,
+            "size_label": null,
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": 74.0,
+                "chart_min_cm": 64.0,
+                "chart_max_cm": 66.0,
+                "basis": "body",
+                "status": "outside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": 97.5,
+                "chart_min_cm": 86.0,
+                "chart_max_cm": 90.0,
+                "basis": "body",
+                "status": "outside"
+              },
+              {
+                "dimension": "inseam",
+                "role": "secondary",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "Waist 74 cm is outside size XS, the closest listed size (64–66 cm), beyond the ±2 cm tolerance.",
+              "Hips 97.5 cm is outside size XS, the closest listed size (86–90 cm), beyond the ±2 cm tolerance."
+            ]
+          }
+        },
+        "above-the-listed-sizes": {
+          "group": "hidden",
+          "fit": {
+            "mode": "personal_fit",
+            "outcome": "mismatch",
+            "approximate": false,
+            "size_label": null,
+            "rows": [
+              {
+                "dimension": "waist",
+                "role": "critical",
+                "user_cm": 125.0,
+                "chart_min_cm": 64.0,
+                "chart_max_cm": 66.0,
+                "basis": "body",
+                "status": "outside"
+              },
+              {
+                "dimension": "hips",
+                "role": "critical",
+                "user_cm": 135.0,
+                "chart_min_cm": 86.0,
+                "chart_max_cm": 90.0,
+                "basis": "body",
+                "status": "outside"
+              },
+              {
+                "dimension": "inseam",
+                "role": "secondary",
+                "user_cm": null,
+                "chart_min_cm": null,
+                "chart_max_cm": null,
+                "basis": null,
+                "status": "missing"
+              }
+            ],
+            "reasons": [
+              "Waist 125 cm is outside size XS, the closest listed size (64–66 cm), beyond the ±2 cm tolerance.",
+              "Hips 135 cm is outside size XS, the closest listed size (86–90 cm), beyond the ±2 cm tolerance."
+            ]
+          }
+        }
       }
     },
     {
       "id": "levis-baggy-jeans",
       "name": "Levi's baggy jeans",
-      "product_type": "Jeans",
-      "category": "bottoms",
-      "price_cents": 5500,
-      "currency": "EUR",
+      "product_type": "jeans",
+      "product_type_label": "Jeans",
+      "fit_category": "bottoms",
       "sold_sizes": [
         "29/32",
         "30/32",
         "30/34"
       ],
       "input_url": "https://merchandizable.sumupstore.com/produkt/levis-baggy-jeans",
-      "product_url": "https://merchandizable.sumupstore.com/produkt/levis-baggy-jeans",
+      "option": {
+        "rank": 1,
+        "listing_id": "feaef9f7-20de-5788-b247-edc5bc6014b9",
+        "seller": {
+          "name": "Merchandizable",
+          "domain": "merchandizable.example"
+        },
+        "url": "https://merchandizable.sumupstore.com/produkt/levis-baggy-jeans",
+        "total_cents": 5500,
+        "summary": "Demo shop",
+        "price_check": {
+          "currency": "EUR",
+          "listing_cents": 5500,
+          "shipping_cents": null,
+          "total_cents": 5500,
+          "total_is_estimate": true
+        },
+        "seller_risk": {
+          "seller_name": "Merchandizable",
+          "is_official": false,
+          "trust_rating": null,
+          "level": null,
+          "review_rating": null,
+          "review_count": null,
+          "return_policy": {
+            "verified": false,
+            "window_days": null,
+            "free": null,
+            "restocking_fee": null,
+            "title": null,
+            "details": null
+          },
+          "review_highlights": [],
+          "fit_signal": "unknown"
+        }
+      },
       "quick_fit": {
         "XS": {
-          "outcome": "uncertain",
-          "size_label": null,
-          "reasons": [
-            "This product isn't listed in size XS."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": null,
+            "rows": [],
+            "reasons": [
+              "The sizes listed for this product aren't in its size chart, so they can't be compared."
+            ]
+          }
         },
         "S": {
-          "outcome": "uncertain",
-          "size_label": null,
-          "reasons": [
-            "This product isn't listed in size S."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": null,
+            "rows": [],
+            "reasons": [
+              "The sizes listed for this product aren't in its size chart, so they can't be compared."
+            ]
+          }
         },
         "M": {
-          "outcome": "uncertain",
-          "size_label": null,
-          "reasons": [
-            "This product isn't listed in size M."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": null,
+            "rows": [],
+            "reasons": [
+              "The sizes listed for this product aren't in its size chart, so they can't be compared."
+            ]
+          }
         },
         "L": {
-          "outcome": "uncertain",
-          "size_label": null,
-          "reasons": [
-            "This product isn't listed in size L."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": null,
+            "rows": [],
+            "reasons": [
+              "The sizes listed for this product aren't in its size chart, so they can't be compared."
+            ]
+          }
         },
         "XL": {
-          "outcome": "uncertain",
-          "size_label": null,
-          "reasons": [
-            "This product isn't listed in size XL."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": null,
+            "rows": [],
+            "reasons": [
+              "The sizes listed for this product aren't in its size chart, so they can't be compared."
+            ]
+          }
         },
         "none": {
-          "outcome": "uncertain",
-          "size_label": null,
-          "reasons": [
-            "Add your Bottoms size."
-          ]
+          "group": "uncertain",
+          "fit": {
+            "mode": "quick_fit",
+            "outcome": "uncertain",
+            "approximate": true,
+            "size_label": null,
+            "rows": [],
+            "reasons": [
+              "Add your Bottoms size."
+            ]
+          }
         }
       },
       "personal_fit": {
-        "outcome": "uncertain",
-        "size_label": null,
-        "reasons": [
-          "This product uses waist/length sizes, which the demo chart doesn't describe."
-        ]
+        "group": "uncertain",
+        "fit": {
+          "mode": "personal_fit",
+          "outcome": "uncertain",
+          "approximate": false,
+          "size_label": null,
+          "rows": [],
+          "reasons": [
+            "The sizes listed for this product aren't in its size chart, so they can't be compared."
+          ]
+        }
+      },
+      "sample_fit": {
+        "inside-size-s": {
+          "group": "uncertain",
+          "fit": {
+            "mode": "personal_fit",
+            "outcome": "uncertain",
+            "approximate": false,
+            "size_label": null,
+            "rows": [],
+            "reasons": [
+              "The sizes listed for this product aren't in its size chart, so they can't be compared."
+            ]
+          }
+        },
+        "on-the-s-m-line": {
+          "group": "uncertain",
+          "fit": {
+            "mode": "personal_fit",
+            "outcome": "uncertain",
+            "approximate": false,
+            "size_label": null,
+            "rows": [],
+            "reasons": [
+              "The sizes listed for this product aren't in its size chart, so they can't be compared."
+            ]
+          }
+        },
+        "above-the-listed-sizes": {
+          "group": "uncertain",
+          "fit": {
+            "mode": "personal_fit",
+            "outcome": "uncertain",
+            "approximate": false,
+            "size_label": null,
+            "rows": [],
+            "reasons": [
+              "The sizes listed for this product aren't in its size chart, so they can't be compared."
+            ]
+          }
+        }
       }
     }
   ]

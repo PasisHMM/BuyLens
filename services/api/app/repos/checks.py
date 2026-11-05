@@ -5,7 +5,15 @@ from uuid import UUID
 
 from app.db import Database
 from app.pipeline.models import FitCheck, MemorySnapshot, PriceCheck, ProfileSnapshot, SellerRisk
-from app.schemas.checks import CheckResult, CheckSummary, OptionOut, ProductOut, SellerOut, WhyNot
+from app.pipeline.ranking import result_group
+from app.schemas.checks import (
+    CheckResult,
+    CheckSummary,
+    HiddenMismatches,
+    OptionOut,
+    ProductOut,
+    SellerOut,
+)
 
 
 class CheckRepo(Protocol):
@@ -22,8 +30,9 @@ class CheckRepo(Protocol):
 
 _GET_RUN = """
 select r.id, r.status, r.current_step, r.input_url, r.created_at, r.completed_at, r.error,
-       r.profile_snapshot ->> 'unit' as unit, r.selected_size, r.verdict, r.headline, r.explanation,
-       r.why_not, p.name as product_name, p.category, p.attributes, p.image_url
+       r.profile_snapshot ->> 'unit' as unit, r.selected_size,
+       coalesce(r.profile_snapshot ->> 'fit_mode', 'personal_fit') as fit_mode,
+       p.name as product_name, p.category, p.attributes, p.image_url
   from check_runs r left join products p on p.id = r.product_id
  where r.id = $1
 """
@@ -39,8 +48,8 @@ select o.rank, o.listing_id, o.total_cents, o.summary, o.price_check, o.fit_chec
 """
 
 _RECENT = """
-select r.id, r.status, r.created_at, r.verdict, r.selected_size, p.name as product_name, p.image_url,
-       o.total_cents, o.price_check ->> 'currency' as currency
+select r.id, r.status, r.created_at, r.selected_size, p.name as product_name, p.image_url,
+       o.total_cents, o.price_check ->> 'currency' as currency, o.fit_check ->> 'outcome' as fit_outcome
   from check_runs r
   left join products p on p.id = r.product_id
   left join check_options o on o.run_id = r.id and o.rank = 1
@@ -62,14 +71,8 @@ class PgCheckRepo:
     async def memory_snapshot(self, user_id: UUID) -> MemorySnapshot:
         async with self._db.user_tx(user_id) as conn:
             fit = await conn.fetch("select brand_id, category, dimension, ease_adjust_cm from fit_memory")
-            decision = await conn.fetchrow(
-                "select price_sensitivity, risk_aversion, fit_strictness from decision_memory"
-            )
         return MemorySnapshot.model_validate(
-            {
-                "fit": [{**dict(r), "ease_adjust_cm": float(r["ease_adjust_cm"])} for r in fit],
-                "decision": {k: float(v) for k, v in dict(decision).items()} if decision else {},
-            }
+            {"fit": [{**dict(r), "ease_adjust_cm": float(r["ease_adjust_cm"])} for r in fit]}
         )
 
     async def active_runs(self, user_id: UUID) -> int:
@@ -131,7 +134,21 @@ class PgCheckRepo:
         return result.endswith(" 1")
 
 
-def _result(run: Any, options: list[Any]) -> CheckResult:
+def _option(row: Any) -> OptionOut:
+    return OptionOut(
+        rank=row["rank"],
+        listing_id=row["listing_id"],
+        seller=SellerOut(name=row["seller_name"], domain=row["domain"]),
+        url=row["url"],
+        total_cents=row["total_cents"],
+        summary=row["summary"],
+        price_check=PriceCheck.model_validate(row["price_check"]),
+        fit_check=FitCheck.model_validate(row["fit_check"]),
+        seller_risk=SellerRisk.model_validate(row["seller_risk"]),
+    )
+
+
+def _result(run: Any, rows: list[Any]) -> CheckResult:
     attributes = dict(run["attributes"] or {})
     product = None
     if run["product_name"]:
@@ -142,7 +159,10 @@ def _result(run: Any, options: list[Any]) -> CheckResult:
             attributes=attributes,
             image_url=run["image_url"],
         )
-    why_not = run["why_not"] or None
+    options = [_option(r) for r in rows]
+    grouped = {"matches": [], "uncertain": [], "hidden": []}  # type: dict[str, list[OptionOut]]
+    for option in options:
+        grouped[result_group(option.fit_check.outcome)].append(option)
     return CheckResult(
         id=run["id"],
         status=run["status"],
@@ -151,25 +171,14 @@ def _result(run: Any, options: list[Any]) -> CheckResult:
         created_at=run["created_at"],
         completed_at=run["completed_at"],
         error=run["error"],
-        unit=run["unit"] or "in",
+        unit=run["unit"] or "cm",
         product=product,
         selected_size=run["selected_size"],
-        verdict=run["verdict"],
-        headline=run["headline"],
-        explanation=run["explanation"],
-        why_not=WhyNot(buy=why_not.get("buy"), skip=why_not.get("skip")) if why_not else None,
-        options=[
-            OptionOut(
-                rank=o["rank"],
-                listing_id=o["listing_id"],
-                seller=SellerOut(name=o["seller_name"], domain=o["domain"]),
-                url=o["url"],
-                total_cents=o["total_cents"],
-                summary=o["summary"],
-                price_check=PriceCheck.model_validate(o["price_check"]),
-                fit_check=FitCheck.model_validate(o["fit_check"]),
-                seller_risk=SellerRisk.model_validate(o["seller_risk"]),
-            )
-            for o in options
-        ],
+        fit_mode_used=run["fit_mode"],
+        matches=grouped["matches"],
+        uncertain=grouped["uncertain"],
+        hidden_mismatches=HiddenMismatches(
+            count=len(grouped["hidden"]),
+            reasons=[f"{o.seller.name}: {' '.join(o.fit_check.reasons)}" for o in grouped["hidden"]],
+        ),
     )

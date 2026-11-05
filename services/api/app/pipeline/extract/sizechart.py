@@ -33,11 +33,13 @@ def _num(raw: str) -> float:
     return float(raw) + half
 
 
-def _value(cell: str) -> float | None:
+def _value(cell: str) -> tuple[float, float] | None:
+    """The published range in a cell; a single value is a range of one."""
     if m := _RANGE.search(cell):
-        return round((_num(m[1]) + _num(m[2])) / 2, 2)
+        return _num(m[1]), _num(m[2])
     if m := _SINGLE.search(cell):
-        return _num(m[0])
+        value = _num(m[0])
+        return value, value
     return None
 
 
@@ -99,6 +101,29 @@ def _to_cm(dim: str, value: float, unit: str | None) -> float | None:
     return round(value * CM_PER_IN if unit == "in" else value, 1)
 
 
+def _flat_to_round(dim: str, cm: float, basis: Basis) -> float:
+    if basis == "garment" and dim in ("waist", "hips") and cm < 45:
+        return round(cm * 2, 1)  # measured flat: half the circumference
+    return cm
+
+
+def _measure(dim: str, published: tuple[float, float], unit: str | None, basis: Basis) -> Measure | None:
+    low, high = published
+    middle = _to_cm(dim, round((low + high) / 2, 2), unit)
+    if middle is None:
+        return None
+    cm = _flat_to_round(dim, middle, basis)
+    low_cm, high_cm = _to_cm(dim, low, unit), _to_cm(dim, high, unit)
+    if low == high or low_cm is None or high_cm is None or low_cm >= high_cm:
+        return Measure(cm=cm, basis=basis)
+    return Measure(
+        cm=cm,
+        basis=basis,
+        min_cm=_flat_to_round(dim, low_cm, basis),
+        max_cm=_flat_to_round(dim, high_cm, basis),
+    )
+
+
 def parse_table(table: Tag) -> SizeChart | None:
     rows = _rows(table)
     if len(rows) < 2:
@@ -109,7 +134,7 @@ def parse_table(table: Tag) -> SizeChart | None:
 
     header = rows[0]
     header_dims = [_dimension(h) for h in header]
-    entries: dict[str, dict[str, tuple[float, str | None]]] = {}
+    entries: dict[str, dict[str, tuple[tuple[float, float], str | None]]] = {}
 
     if any(header_dims) and _dimension(header[0]) is None:
         # Size per row: | Size | Waist (in) | Hip (in) | Inseam |
@@ -134,13 +159,9 @@ def parse_table(table: Tag) -> SizeChart | None:
         if not label or label.lower() in SIZE_HEADERS:
             continue
         measures: dict[str, Measure] = {}
-        for dim, (value, unit) in dims.items():
-            cm = _to_cm(dim, value, unit)
-            if cm is None:
-                continue
-            if basis == "garment" and dim in ("waist", "hips") and cm < 45:
-                cm = round(cm * 2, 1)  # measured flat: half the circumference
-            measures[dim] = Measure(cm=cm, basis=basis)
+        for dim, (published, unit) in dims.items():
+            if (measure := _measure(dim, published, unit, basis)) is not None:
+                measures[dim] = measure
         if measures:
             size_rows.append(SizeRow(label=label, measures=measures))
     return SizeChart(rows=size_rows, source="table") if len(size_rows) >= 2 else None

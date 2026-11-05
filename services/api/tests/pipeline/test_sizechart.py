@@ -38,6 +38,35 @@ def test_ranges_and_halves():
     assert rows["M"]["hips"][0] == pytest.approx(38.5 * 2.54, abs=0.1)
 
 
+def test_a_published_range_is_kept_alongside_its_middle():
+    soup = soup_of("""
+        <table><tr><th>Size</th><th>Waist (cm)</th><th>Hips (cm)</th></tr>
+        <tr><td>S</td><td>66-74</td><td>90</td></tr><tr><td>M</td><td>74 &ndash; 82.5</td><td>97</td></tr></table>
+    """)
+    parsed = find_size_chart(soup)
+    assert parsed is not None
+    small = next(r for r in parsed.rows if r.label == "S")
+    medium = next(r for r in parsed.rows if r.label == "M")
+    assert (small.measures["waist"].cm, small.measures["waist"].min_cm, small.measures["waist"].max_cm) == (
+        70.0,
+        66.0,
+        74.0,
+    )
+    assert (medium.measures["waist"].min_cm, medium.measures["waist"].max_cm) == (74.0, 82.5)
+    assert (small.measures["hips"].min_cm, small.measures["hips"].max_cm) == (None, None)
+
+
+def test_a_range_measured_flat_is_doubled():
+    soup = soup_of("""
+        <p>Garment measurements, laid flat (cm)</p>
+        <table><tr><th>Size</th><th>Waist</th></tr><tr><td>S</td><td>33-37</td></tr><tr><td>M</td><td>37-41</td></tr></table>
+    """)
+    parsed = find_size_chart(soup)
+    assert parsed is not None
+    small = next(r for r in parsed.rows if r.label == "S").measures["waist"]
+    assert (small.cm, small.min_cm, small.max_cm) == (70.0, 66.0, 74.0)
+
+
 def test_garment_measured_flat_is_doubled():
     rows = chart("""
         <p>Garment measurements, laid flat (inches)</p>

@@ -63,7 +63,8 @@
         "shoulders"
       ],
       "secondary": [
-        "waist"
+        "waist",
+        "sleeve"
       ]
     },
     {
@@ -83,7 +84,51 @@
         "chest",
         "shoulders"
       ],
-      "secondary": []
+      "secondary": [
+        "sleeve"
+      ]
+    }
+  ],
+  "product_types": [
+    {
+      "id": "jeans",
+      "label": "Jeans",
+      "fit_category": "bottoms"
+    },
+    {
+      "id": "pants",
+      "label": "Pants",
+      "fit_category": "bottoms"
+    },
+    {
+      "id": "sweaters",
+      "label": "Sweaters",
+      "fit_category": "tops"
+    },
+    {
+      "id": "tops",
+      "label": "Tops / cardigans",
+      "fit_category": "tops"
+    },
+    {
+      "id": "hoodies",
+      "label": "Hoodies",
+      "fit_category": "tops"
+    },
+    {
+      "id": "skirts",
+      "label": "Skirts",
+      "fit_category": null
+    },
+    {
+      "id": "shorts",
+      "label": "Shorts",
+      "fit_category": null
+    },
+    {
+      "id": "hats",
+      "label": "Hats",
+      "fit_category": null
     }
   ],
   "quick_sizes": [

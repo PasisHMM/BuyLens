@@ -42,6 +42,10 @@ _ALIASES: Mapping[str, Dimension] = {
 }
 
 
+# The primary fit measurements. Quick Fit compares only these, as far as a category uses them.
+PRIORITY_DIMENSIONS = frozenset({Dimension.WAIST, Dimension.HIPS, Dimension.SHOULDERS})
+
+
 @dataclass(frozen=True)
 class CategoryRule:
     """Critical measurements outside tolerance mean MISMATCH; secondary ones can only make a fit UNCERTAIN."""
@@ -59,6 +63,10 @@ class CategoryRule:
         if self.body_tol_cm <= 0 or self.garment_tol_cm <= 0:
             raise ValueError("A tolerance must be positive.")
 
+    @property
+    def quick_fit_dimensions(self) -> frozenset[Dimension]:
+        return self.critical & PRIORITY_DIMENSIONS
+
     def tolerance_cm(self, basis: Basis) -> float:
         return self.body_tol_cm if basis is Basis.BODY else self.garment_tol_cm
 
@@ -66,30 +74,18 @@ class CategoryRule:
 _D = Dimension
 CATEGORY_RULES: Mapping[FitCategory, CategoryRule] = {
     FitCategory.BOTTOMS: CategoryRule(frozenset({_D.WAIST, _D.HIPS}), frozenset({_D.INSEAM}), 2.0, 1.0),
-    FitCategory.TOPS: CategoryRule(frozenset({_D.CHEST, _D.SHOULDERS}), frozenset({_D.WAIST}), 2.0, 2.0),
+    FitCategory.TOPS: CategoryRule(
+        frozenset({_D.CHEST, _D.SHOULDERS}), frozenset({_D.WAIST, _D.SLEEVE}), 2.0, 2.0
+    ),
     FitCategory.DRESSES: CategoryRule(frozenset({_D.CHEST, _D.WAIST, _D.HIPS}), frozenset(), 2.0, 2.0),
     FitCategory.OUTERWEAR: CategoryRule(
-        frozenset({_D.CHEST, _D.SHOULDERS}), frozenset(), 3.0, 3.0
+        frozenset({_D.CHEST, _D.SHOULDERS}), frozenset({_D.SLEEVE}), 3.0, 3.0
     ),  # room for layers
-}
-
-# Product categories from extract.attributes that have agreed rules. Shorts and skirts have none yet.
-_PRODUCT_CATEGORIES: Mapping[str, FitCategory] = {
-    "jeans": FitCategory.BOTTOMS,
-    "pants": FitCategory.BOTTOMS,
-    "tops": FitCategory.TOPS,
-    "dresses": FitCategory.DRESSES,
-    "outerwear": FitCategory.OUTERWEAR,
 }
 
 
 def rule_for(category: FitCategory) -> CategoryRule:
     return CATEGORY_RULES[category]
-
-
-def fit_category(product_category: str | None) -> FitCategory | None:
-    """The rules that apply to an extracted product, or None when no agreed rules exist."""
-    return _PRODUCT_CATEGORIES.get(product_category or "")
 
 
 def parse_dimension(raw: str) -> Dimension:

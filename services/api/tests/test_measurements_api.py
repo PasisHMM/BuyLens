@@ -26,4 +26,13 @@ async def test_tops_are_chest_and_shoulders_with_waist_secondary(client):
     tops = next(c for c in body["categories"] if c["id"] == FitCategory.TOPS)
     assert tops["label"] == "Tops"
     assert set(tops["critical"]) == {"chest", "shoulders"}
-    assert tops["secondary"] == ["waist"]
+    assert tops["secondary"] == ["waist", "sleeve"]
+
+
+async def test_lists_product_types_with_their_fit_category(client):
+    body = (await client.get("/v1/measurements")).json()
+    types = {t["id"]: t["fit_category"] for t in body["product_types"]}
+    assert types["jeans"] == "bottoms"
+    assert types["hoodies"] == "tops"
+    assert types["skirts"] is None
+    assert len(types) == 8

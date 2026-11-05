@@ -11,11 +11,16 @@ from app.db import Database
 from app.pipeline.cache import MemoryCache
 from app.pipeline.models import (
     Candidate,
+    FitCheck,
+    FitOutcome,
     Match,
     MemorySnapshot,
-    Narrative,
+    PriceCheck,
     ProductExtract,
     ProfileSnapshot,
+    RankedOption,
+    ReturnPolicy,
+    SellerRisk,
 )
 from app.pipeline.progress import MemoryEventBus
 from app.pipeline.run_check import PipelineDeps, run_check
@@ -90,19 +95,21 @@ async def test_full_check_round_trip(db, test_seller):
 
     result = await repo.get(user, run_id)
     assert result is not None
-    assert (result.status, result.verdict, result.selected_size) == ("done", "CONSIDER", "W26 / L30")
+    assert (result.status, result.fit_mode_used) == ("done", "personal_fit")
     assert result.product is not None and result.product.brand == "Levi's"
-    assert result.headline == "Check the hips before you buy."
-    assert result.why_not is not None and result.why_not.buy
-    assert len(result.options) == 1
-    option = result.options[0]
+    # The fixture publishes garment measurements, which a body profile can't be compared with.
+    assert (result.matches, result.hidden_mismatches.count) == ([], 0)
+    assert len(result.uncertain) == 1
+    option = result.uncertain[0]
     assert isinstance(option.listing_id, UUID)  # the stable offer identifier reaches the API
     assert option.seller.domain == test_seller
     assert option.seller_risk.is_official and option.seller_risk.level == "low"
-    assert [r.dimension for r in option.fit_check.rows] == ["waist", "inseam", "hips"]
+    assert [r.dimension for r in option.fit_check.rows] == ["waist", "hips", "inseam"]
+    assert option.fit_check.outcome is FitOutcome.UNCERTAIN
 
     recent = await repo.recent(user, 5)
-    assert recent[0].id == run_id and recent[0].total_cents == 9800 and recent[0].verdict == "CONSIDER"
+    assert recent[0].id == run_id and recent[0].total_cents == 9800
+    assert recent[0].fit_outcome is FitOutcome.UNCERTAIN
 
     # A second worker can't claim the same run.
     assert await store.load_run(run_id) is None
@@ -158,9 +165,65 @@ async def test_complete_run_is_ignored_after_cancel(db):
                                    pipeline_version="test")  # fmt: skip
     assert await store.load_run(run_id) is not None
     await store.finish_run(run_id, "cancelled")
-    narrative = Narrative(headline="h", explanation="e", why_not_buy=None, why_not_skip=None, option_summaries=[],
-                          written_by="template")  # fmt: skip
-    from app.pipeline.models import Decision, Verdict
-
-    await store.complete_run(run_id, uuid4(), None, [], Decision(verdict=Verdict.BUY, reasons=[]), narrative)
+    await store.complete_run(run_id, uuid4(), None, [])
     assert await repo.status(user, run_id) == "cancelled"
+
+
+async def test_mismatches_stay_stored_and_leave_the_visible_results(db, test_seller):
+    repo, store = PgCheckRepo(db), PgCheckStore(db)
+    user = await new_user(db)
+    run_id = await repo.create_run(user, input_url=f"https://www.{test_seller}/p", profile=PROFILE,
+                                   memory=MemorySnapshot(), pipeline_version="test")  # fmt: skip
+    assert await store.load_run(run_id) is not None
+    seller = next(s for s in await store.sellers() if s.domain == test_seller)
+
+    async def stored_option(rank: int, outcome: FitOutcome, reason: str) -> RankedOption:
+        url = f"https://www.{test_seller}/p/{uuid4().hex[:8]}"
+        extract = ProductExtract(url=url, canonical_url=url, seller_domain=test_seller, name="Jean", price_cents=5000,
+                                 currency="EUR")  # fmt: skip
+        candidate = Candidate(extract=extract, seller=seller, match=Match.EXACT)
+        _, candidate.listing_id = await store.save_listing(candidate, None)
+        return RankedOption(
+            rank=rank,
+            candidate=candidate,
+            price=PriceCheck(
+                currency="EUR",
+                listing_cents=5000,
+                shipping_cents=None,
+                total_cents=5000,
+                total_is_estimate=True,
+            ),
+            fit=FitCheck(outcome=outcome, reasons=[reason]),
+            risk=SellerRisk(
+                seller_name=seller.name,
+                is_official=False,
+                trust_rating=None,
+                level=None,
+                review_rating=None,
+                review_count=None,
+                return_policy=ReturnPolicy(),
+                review_highlights=[],
+            ),
+            summary="s",
+        )
+
+    # More than the old limit of three, with the mismatches ranked last.
+    outcomes = [
+        FitOutcome.MATCH,
+        FitOutcome.UNCERTAIN,
+        FitOutcome.MISMATCH,
+        FitOutcome.MISMATCH,
+        FitOutcome.MISMATCH,
+    ]
+    options = [await stored_option(i, o, f"reason {i}") for i, o in enumerate(outcomes, start=1)]
+    product_id, _ = await store.save_listing(options[0].candidate, None)
+    await store.complete_run(run_id, product_id, "M", options)
+
+    result = await repo.get(user, run_id)
+    assert result is not None
+    assert ([o.rank for o in result.matches], [o.rank for o in result.uncertain]) == ([1], [2])
+    assert result.hidden_mismatches.count == 3
+    assert result.hidden_mismatches.reasons[0] == "Test official store: reason 3"
+    async with db.pool.acquire() as conn:
+        stored = await conn.fetchval("select count(*) from check_options where run_id = $1", run_id)
+    assert stored == 5

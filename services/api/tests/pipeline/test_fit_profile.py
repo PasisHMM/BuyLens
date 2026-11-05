@@ -7,7 +7,7 @@ from app.pipeline.fit_profile import (
     InvalidProfile,
     Measurement,
     ProfileUpdate,
-    body_measurements_cm,
+    check_measurements_cm,
     merge_profile,
     quick_size_for,
 )
@@ -84,7 +84,7 @@ def test_clearing_every_measurement_is_rejected_in_personal_fit() -> None:
         merge_profile(stored, ProfileUpdate(FitMode.PERSONAL_FIT, measurements={}))
 
 
-def test_only_body_measurements_reach_todays_fit_check() -> None:
+def test_each_basis_reaches_a_check_separately() -> None:
     profile = FitProfile(
         FitMode.PERSONAL_FIT,
         None,
@@ -94,9 +94,10 @@ def test_only_body_measurements_reach_todays_fit_check() -> None:
             Dimension.HIPS: Measurement(98.0, Basis.GARMENT, "My blue jeans"),
         },
     )
-    assert body_measurements_cm(profile) == {"waist": 66.0}
+    assert check_measurements_cm(profile, Basis.BODY) == {"waist": 66.0}
+    assert check_measurements_cm(profile, Basis.GARMENT) == {"hips": 98.0}
 
 
 def test_quick_fit_never_passes_saved_measurements_to_a_check() -> None:
     profile = FitProfile(FitMode.QUICK_FIT, None, {TOPS: QuickSize.S}, WAIST)
-    assert body_measurements_cm(profile) == {}
+    assert check_measurements_cm(profile, Basis.BODY) == {}

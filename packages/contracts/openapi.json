@@ -51,6 +51,13 @@
             "title": "Dimensions",
             "type": "array"
           },
+          "product_types": {
+            "items": {
+              "$ref": "#/components/schemas/ProductTypeOut"
+            },
+            "title": "Product Types",
+            "type": "array"
+          },
           "quick_sizes": {
             "items": {
               "$ref": "#/components/schemas/QuickSize"
@@ -69,6 +76,7 @@
         "required": [
           "dimensions",
           "categories",
+          "product_types",
           "quick_sizes",
           "size_systems"
         ],
@@ -190,27 +198,18 @@
             ],
             "title": "Error"
           },
-          "explanation": {
+          "fit_mode_used": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/FitMode"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Explanation"
+            ]
           },
-          "headline": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Headline"
+          "hidden_mismatches": {
+            "$ref": "#/components/schemas/HiddenMismatches"
           },
           "id": {
             "format": "uuid",
@@ -221,11 +220,11 @@
             "title": "Input Url",
             "type": "string"
           },
-          "options": {
+          "matches": {
             "items": {
               "$ref": "#/components/schemas/OptionOut"
             },
-            "title": "Options",
+            "title": "Matches",
             "type": "array"
           },
           "product": {
@@ -260,6 +259,13 @@
             "title": "Status",
             "type": "string"
           },
+          "uncertain": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "title": "Uncertain",
+            "type": "array"
+          },
           "unit": {
             "enum": [
               "in",
@@ -267,32 +273,6 @@
             ],
             "title": "Unit",
             "type": "string"
-          },
-          "verdict": {
-            "anyOf": [
-              {
-                "enum": [
-                  "BUY",
-                  "CONSIDER",
-                  "SKIP"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Verdict"
-          },
-          "why_not": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/WhyNot"
-              },
-              {
-                "type": "null"
-              }
-            ]
           }
         },
         "required": [
@@ -306,11 +286,10 @@
           "unit",
           "product",
           "selected_size",
-          "verdict",
-          "headline",
-          "explanation",
-          "why_not",
-          "options"
+          "fit_mode_used",
+          "matches",
+          "uncertain",
+          "hidden_mismatches"
         ],
         "title": "CheckResult",
         "type": "object"
@@ -333,6 +312,16 @@
               }
             ],
             "title": "Currency"
+          },
+          "fit_outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FitOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "id": {
             "format": "uuid",
@@ -393,22 +382,6 @@
               }
             ],
             "title": "Total Cents"
-          },
-          "verdict": {
-            "anyOf": [
-              {
-                "enum": [
-                  "BUY",
-                  "CONSIDER",
-                  "SKIP"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Verdict"
           }
         },
         "required": [
@@ -417,7 +390,7 @@
           "created_at",
           "product_name",
           "image_url",
-          "verdict",
+          "fit_outcome",
           "selected_size",
           "total_cents",
           "currency"
@@ -466,6 +439,16 @@
         "title": "DimensionOut",
         "type": "object"
       },
+      "DimensionStatus": {
+        "enum": [
+          "inside",
+          "near",
+          "outside",
+          "missing"
+        ],
+        "title": "DimensionStatus",
+        "type": "string"
+      },
       "FitCategory": {
         "description": "Garment groups that have agreed fit rules.",
         "enum": [
@@ -479,25 +462,25 @@
       },
       "FitCheck": {
         "properties": {
-          "alerts": {
+          "approximate": {
+            "default": false,
+            "title": "Approximate",
+            "type": "boolean"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/FitMode",
+            "default": "personal_fit"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/FitOutcome",
+            "default": "uncertain"
+          },
+          "reasons": {
             "items": {
               "type": "string"
             },
-            "title": "Alerts",
+            "title": "Reasons",
             "type": "array"
-          },
-          "confidence": {
-            "enum": [
-              "high",
-              "medium",
-              "limited"
-            ],
-            "title": "Confidence",
-            "type": "string"
-          },
-          "notes": {
-            "title": "Notes",
-            "type": "string"
           },
           "rows": {
             "items": {
@@ -507,39 +490,37 @@
             "type": "array"
           },
           "size_label": {
-            "title": "Size Label",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Label"
           }
         },
-        "required": [
-          "size_label",
-          "rows",
-          "confidence",
-          "alerts",
-          "notes"
-        ],
         "title": "FitCheck",
         "type": "object"
       },
-      "FitMatch": {
-        "enum": [
-          "ok",
-          "tight",
-          "loose",
-          "short",
-          "long",
-          "missing"
-        ],
-        "title": "FitMatch",
-        "type": "string"
-      },
       "FitMode": {
-        "description": "How a profile describes the user. Quick Fit sizes are approximate and never prove a mismatch.",
+        "description": "How a profile describes the user. Quick Fit sizes are approximate; Personal Fit values are exact.",
         "enum": [
           "quick_fit",
           "personal_fit"
         ],
         "title": "FitMode",
+        "type": "string"
+      },
+      "FitOutcome": {
+        "description": "Result of comparing a profile with one listing's size data.",
+        "enum": [
+          "match",
+          "uncertain",
+          "mismatch"
+        ],
+        "title": "FitOutcome",
         "type": "string"
       },
       "FitRow": {
@@ -554,47 +535,59 @@
               }
             ]
           },
+          "chart_max_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chart Max Cm"
+          },
+          "chart_min_cm": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chart Min Cm"
+          },
           "dimension": {
             "title": "Dimension",
             "type": "string"
           },
-          "garment_cm": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
+          "role": {
+            "default": "critical",
+            "enum": [
+              "critical",
+              "secondary"
             ],
-            "title": "Garment Cm"
+            "title": "Role",
+            "type": "string"
           },
-          "match": {
-            "$ref": "#/components/schemas/FitMatch"
-          },
-          "room_cm": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Room Cm"
+          "status": {
+            "$ref": "#/components/schemas/DimensionStatus",
+            "default": "missing"
           },
           "user_cm": {
-            "title": "User Cm",
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Cm"
           }
         },
         "required": [
-          "dimension",
-          "user_cm",
-          "garment_cm",
-          "basis",
-          "match",
-          "room_cm"
+          "dimension"
         ],
         "title": "FitRow",
         "type": "object"
@@ -610,6 +603,25 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HiddenMismatches": {
+        "description": "Options left out of the visible results because a critical measurement doesn't fit.",
+        "properties": {
+          "count": {
+            "default": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "title": "HiddenMismatches",
         "type": "object"
       },
       "MeasurementIn": {
@@ -732,50 +744,13 @@
       },
       "PriceCheck": {
         "properties": {
-          "comparable_count": {
-            "title": "Comparable Count",
-            "type": "integer"
-          },
           "currency": {
             "title": "Currency",
             "type": "string"
           },
-          "delta_cents": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Delta Cents"
-          },
-          "delta_pct": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Delta Pct"
-          },
           "listing_cents": {
             "title": "Listing Cents",
             "type": "integer"
-          },
-          "market_avg_cents": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Market Avg Cents"
           },
           "shipping_cents": {
             "anyOf": [
@@ -802,11 +777,7 @@
           "listing_cents",
           "shipping_cents",
           "total_cents",
-          "total_is_estimate",
-          "market_avg_cents",
-          "delta_cents",
-          "delta_pct",
-          "comparable_count"
+          "total_is_estimate"
         ],
         "title": "PriceCheck",
         "type": "object"
@@ -864,6 +835,48 @@
           "image_url"
         ],
         "title": "ProductOut",
+        "type": "object"
+      },
+      "ProductType": {
+        "enum": [
+          "jeans",
+          "pants",
+          "sweaters",
+          "tops",
+          "hoodies",
+          "skirts",
+          "shorts",
+          "hats"
+        ],
+        "title": "ProductType",
+        "type": "string"
+      },
+      "ProductTypeOut": {
+        "properties": {
+          "fit_category": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FitCategory"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "$ref": "#/components/schemas/ProductType"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "fit_category"
+        ],
+        "title": "ProductTypeOut",
         "type": "object"
       },
       "ProfileIn": {
@@ -1197,13 +1210,20 @@
             "type": "boolean"
           },
           "level": {
-            "enum": [
-              "low",
-              "medium",
-              "high"
+            "anyOf": [
+              {
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Level",
-            "type": "string"
+            "title": "Level"
           },
           "return_policy": {
             "$ref": "#/components/schemas/ReturnPolicy"
@@ -1320,34 +1340,6 @@
           "type"
         ],
         "title": "ValidationError",
-        "type": "object"
-      },
-      "WhyNot": {
-        "properties": {
-          "buy": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Buy"
-          },
-          "skip": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Skip"
-          }
-        },
-        "title": "WhyNot",
         "type": "object"
       }
     },

@@ -4,11 +4,11 @@ import pytest
 
 from app.pipeline.measurements import (
     CATEGORY_RULES,
+    PRIORITY_DIMENSIONS,
     CategoryRule,
     SizeReference,
     UnknownCategoryError,
     UnknownMeasurementError,
-    fit_category,
     is_plausible,
     parse_category,
     parse_dimension,
@@ -23,9 +23,9 @@ D = Dimension
     ("category", "critical", "secondary"),
     [
         (FitCategory.BOTTOMS, {D.WAIST, D.HIPS}, {D.INSEAM}),
-        (FitCategory.TOPS, {D.CHEST, D.SHOULDERS}, {D.WAIST}),
+        (FitCategory.TOPS, {D.CHEST, D.SHOULDERS}, {D.WAIST, D.SLEEVE}),
         (FitCategory.DRESSES, {D.CHEST, D.WAIST, D.HIPS}, set()),
-        (FitCategory.OUTERWEAR, {D.CHEST, D.SHOULDERS}, set()),
+        (FitCategory.OUTERWEAR, {D.CHEST, D.SHOULDERS}, {D.SLEEVE}),
     ],
 )
 def test_critical_and_secondary_measurements_per_category(
@@ -58,23 +58,19 @@ def test_every_category_has_a_rule() -> None:
 
 
 @pytest.mark.parametrize(
-    ("product_category", "expected"),
+    ("category", "dimensions"),
     [
-        ("jeans", FitCategory.BOTTOMS),
-        ("pants", FitCategory.BOTTOMS),
-        ("tops", FitCategory.TOPS),
-        ("dresses", FitCategory.DRESSES),
-        ("outerwear", FitCategory.OUTERWEAR),
-        ("shorts", None),  # no agreed rules yet
-        ("skirts", None),
-        ("hats", None),
-        (None, None),
+        (FitCategory.BOTTOMS, {D.WAIST, D.HIPS}),
+        (FitCategory.TOPS, {D.SHOULDERS}),
+        (FitCategory.DRESSES, {D.WAIST, D.HIPS}),
+        (FitCategory.OUTERWEAR, {D.SHOULDERS}),
     ],
 )
-def test_product_category_maps_to_fit_rules_only_where_rules_exist(
-    product_category: str | None, expected: FitCategory | None
+def test_quick_fit_uses_the_priority_measurements_a_category_needs(
+    category: FitCategory, dimensions: set[Dimension]
 ) -> None:
-    assert fit_category(product_category) is expected
+    assert rule_for(category).quick_fit_dimensions == dimensions
+    assert {D.WAIST, D.HIPS, D.SHOULDERS} == PRIORITY_DIMENSIONS
 
 
 @pytest.mark.parametrize(

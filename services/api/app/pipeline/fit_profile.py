@@ -59,12 +59,11 @@ def quick_size_for(profile: FitProfile, category: FitCategory) -> QuickSize | No
     return profile.quick_sizes.get(category)
 
 
-def body_measurements_cm(profile: FitProfile) -> dict[str, float]:
-    """What today's fit check may compare: Personal Fit body values only.
+def check_measurements_cm(profile: FitProfile, basis: Basis) -> dict[str, float]:
+    """The Personal Fit values of one basis a check may compare.
 
-    Quick Fit stays approximate, so saved measurements don't leak into it. Garment values wait for
-    chart-basis matching in Phase 3.
+    Quick Fit stays approximate, so saved measurements don't leak into it.
     """
     if profile.mode is not FitMode.PERSONAL_FIT:
         return {}
-    return {d.value: m.value_cm for d, m in profile.measurements.items() if m.basis is Basis.BODY}
+    return {d.value: m.value_cm for d, m in profile.measurements.items() if m.basis is basis}

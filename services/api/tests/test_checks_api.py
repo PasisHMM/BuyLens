@@ -7,7 +7,7 @@ from app.pipeline.models import MemorySnapshot, ProfileSnapshot
 from app.pipeline.progress import MemoryEventBus, ProgressEvent
 from app.queue import MemoryRateLimiter
 from app.routers.checks import get_check_repo
-from app.schemas.checks import CheckResult, CheckSummary
+from app.schemas.checks import CheckResult, CheckSummary, HiddenMismatches
 from tests.conftest import bearer
 
 PRODUCT_URL = "https://www.levi.com/US/en_US/p/501-cropped?utm_source=ig"
@@ -56,13 +56,14 @@ class InMemoryCheckRepo:
         return CheckResult(
             id=run_id, status=run["status"], current_step=None, input_url=run["input_url"],
             created_at=datetime.now(UTC), completed_at=None, error=None, unit="in", product=None,
-            selected_size=None, verdict=None, headline=None, explanation=None, why_not=None, options=[],
+            selected_size=None, fit_mode_used=None, matches=[], uncertain=[],
+            hidden_mismatches=HiddenMismatches(),
         )  # fmt: skip
 
     async def recent(self, user_id, limit) -> list[CheckSummary]:
         return [
             CheckSummary(id=i, status=r["status"], created_at=datetime.now(UTC), product_name=None, image_url=None,
-                         verdict=None, selected_size=None, total_cents=None, currency=None)
+                         fit_outcome=None, selected_size=None, total_cents=None, currency=None)
             for i, r in self.runs.items() if r["user_id"] == user_id
         ][:limit]  # fmt: skip
 
@@ -248,3 +249,21 @@ async def test_quick_fit_check_keeps_saved_measurements_out_of_the_comparison(cl
 
     resp = await client.post("/v1/checks", json={"url": PRODUCT_URL}, headers=auth)
     assert repo.runs[UUID(resp.json()["id"])]["profile"].measurements_cm == {}
+
+
+async def test_a_personal_fit_check_sends_each_basis_separately(client, checks, user):
+    repo, _, _ = checks
+    _, auth = user
+    personal = {
+        "fit_mode": "personal_fit",
+        "unit": "cm",
+        "measurements": [
+            {"dimension": "waist", "value": 76, "basis": "body"},
+            {"dimension": "hips", "value": 98, "basis": "garment", "note": "My jeans"},
+        ],
+    }
+    await client.put("/v1/profile", json=personal, headers=auth)
+    resp = await client.post("/v1/checks", json={"url": PRODUCT_URL}, headers=auth)
+    snapshot = repo.runs[UUID(resp.json()["id"])]["profile"]
+    assert snapshot.measurements_cm == {"waist": 76.0}
+    assert snapshot.garment_cm == {"hips": 98.0}

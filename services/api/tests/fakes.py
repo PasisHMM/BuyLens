@@ -11,15 +11,12 @@ from app.llm import LLMError
 from app.pipeline.fetch import FetchError, Page
 from app.pipeline.models import (
     Candidate,
-    Decision,
     MemorySnapshot,
-    Narrative,
     ProfileSnapshot,
     RankedOption,
     ReturnPolicy,
     SellerInfo,
     ShippingPolicy,
-    SizeChoice,
     StepId,
 )
 from app.pipeline.seller_risk import ReviewSummary
@@ -153,13 +150,12 @@ class MemoryStore:
     async def save_review_summary(self, listing_id: UUID, summary: ReviewSummary, model: str) -> None:
         self.summaries[listing_id] = summary
 
-    async def complete_run(self, run_id: UUID, product_id: UUID, size: SizeChoice | None,
-                           options: list[RankedOption], decision: Decision,
-                           narrative: Narrative) -> None:  # fmt: skip
+    async def complete_run(self, run_id: UUID, product_id: UUID, selected_size: str | None,
+                           options: list[RankedOption]) -> None:  # fmt: skip
         run = self.runs[run_id]
         if run["status"] != "running":
             return
-        run.update(status="done", size=size, options=options, decision=decision, narrative=narrative)
+        run.update(status="done", selected_size=selected_size, options=options)
 
     async def finish_run(self, run_id: UUID, status: str, error: str | None = None) -> None:
         run = self.runs[run_id]

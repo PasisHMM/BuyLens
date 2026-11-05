@@ -166,6 +166,8 @@ export interface components {
             categories: components["schemas"]["CategoryOut"][];
             /** Dimensions */
             dimensions: components["schemas"]["DimensionOut"][];
+            /** Product Types */
+            product_types: components["schemas"]["ProductTypeOut"][];
             /** Quick Sizes */
             quick_sizes: components["schemas"]["QuickSize"][];
             /** Size Systems */
@@ -212,10 +214,8 @@ export interface components {
             current_step: string | null;
             /** Error */
             error: string | null;
-            /** Explanation */
-            explanation: string | null;
-            /** Headline */
-            headline: string | null;
+            fit_mode_used: components["schemas"]["FitMode"] | null;
+            hidden_mismatches: components["schemas"]["HiddenMismatches"];
             /**
              * Id
              * Format: uuid
@@ -223,8 +223,8 @@ export interface components {
             id: string;
             /** Input Url */
             input_url: string;
-            /** Options */
-            options: components["schemas"]["OptionOut"][];
+            /** Matches */
+            matches: components["schemas"]["OptionOut"][];
             product: components["schemas"]["ProductOut"] | null;
             /** Selected Size */
             selected_size: string | null;
@@ -233,14 +233,13 @@ export interface components {
              * @enum {string}
              */
             status: "queued" | "running" | "done" | "failed" | "cancelled";
+            /** Uncertain */
+            uncertain: components["schemas"]["OptionOut"][];
             /**
              * Unit
              * @enum {string}
              */
             unit: "in" | "cm";
-            /** Verdict */
-            verdict: ("BUY" | "CONSIDER" | "SKIP") | null;
-            why_not: components["schemas"]["WhyNot"] | null;
         };
         /**
          * CheckSummary
@@ -254,6 +253,7 @@ export interface components {
             created_at: string;
             /** Currency */
             currency: string | null;
+            fit_outcome: components["schemas"]["FitOutcome"] | null;
             /**
              * Id
              * Format: uuid
@@ -272,8 +272,6 @@ export interface components {
             status: "queued" | "running" | "done" | "failed" | "cancelled";
             /** Total Cents */
             total_cents: number | null;
-            /** Verdict */
-            verdict: ("BUY" | "CONSIDER" | "SKIP") | null;
         };
         /**
          * Dimension
@@ -292,6 +290,11 @@ export interface components {
             min_cm: number;
         };
         /**
+         * DimensionStatus
+         * @enum {string}
+         */
+        DimensionStatus: "inside" | "near" | "outside" | "missing";
+        /**
          * FitCategory
          * @description Garment groups that have agreed fit rules.
          * @enum {string}
@@ -299,48 +302,71 @@ export interface components {
         FitCategory: "bottoms" | "tops" | "dresses" | "outerwear";
         /** FitCheck */
         FitCheck: {
-            /** Alerts */
-            alerts: string[];
             /**
-             * Confidence
-             * @enum {string}
+             * Approximate
+             * @default false
              */
-            confidence: "high" | "medium" | "limited";
-            /** Notes */
-            notes: string;
+            approximate: boolean;
+            /** @default personal_fit */
+            mode: components["schemas"]["FitMode"];
+            /** @default uncertain */
+            outcome: components["schemas"]["FitOutcome"];
+            /** Reasons */
+            reasons?: string[];
             /** Rows */
-            rows: components["schemas"]["FitRow"][];
+            rows?: components["schemas"]["FitRow"][];
             /** Size Label */
-            size_label: string;
+            size_label?: string | null;
         };
         /**
-         * FitMatch
-         * @enum {string}
-         */
-        FitMatch: "ok" | "tight" | "loose" | "short" | "long" | "missing";
-        /**
          * FitMode
-         * @description How a profile describes the user. Quick Fit sizes are approximate and never prove a mismatch.
+         * @description How a profile describes the user. Quick Fit sizes are approximate; Personal Fit values are exact.
          * @enum {string}
          */
         FitMode: "quick_fit" | "personal_fit";
+        /**
+         * FitOutcome
+         * @description Result of comparing a profile with one listing's size data.
+         * @enum {string}
+         */
+        FitOutcome: "match" | "uncertain" | "mismatch";
         /** FitRow */
         FitRow: {
-            basis: components["schemas"]["Basis"] | null;
+            basis?: components["schemas"]["Basis"] | null;
+            /** Chart Max Cm */
+            chart_max_cm?: number | null;
+            /** Chart Min Cm */
+            chart_min_cm?: number | null;
             /** Dimension */
             dimension: string;
-            /** Garment Cm */
-            garment_cm: number | null;
-            match: components["schemas"]["FitMatch"];
-            /** Room Cm */
-            room_cm: number | null;
+            /**
+             * Role
+             * @default critical
+             * @enum {string}
+             */
+            role: "critical" | "secondary";
+            /** @default missing */
+            status: components["schemas"]["DimensionStatus"];
             /** User Cm */
-            user_cm: number;
+            user_cm?: number | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * HiddenMismatches
+         * @description Options left out of the visible results because a critical measurement doesn't fit.
+         */
+        HiddenMismatches: {
+            /**
+             * Count
+             * @default 0
+             */
+            count: number;
+            /** Reasons */
+            reasons?: string[];
         };
         /** MeasurementIn */
         MeasurementIn: {
@@ -383,18 +409,10 @@ export interface components {
         };
         /** PriceCheck */
         PriceCheck: {
-            /** Comparable Count */
-            comparable_count: number;
             /** Currency */
             currency: string;
-            /** Delta Cents */
-            delta_cents: number | null;
-            /** Delta Pct */
-            delta_pct: number | null;
             /** Listing Cents */
             listing_cents: number;
-            /** Market Avg Cents */
-            market_avg_cents: number | null;
             /** Shipping Cents */
             shipping_cents: number | null;
             /** Total Cents */
@@ -416,6 +434,18 @@ export interface components {
             image_url: string | null;
             /** Name */
             name: string;
+        };
+        /**
+         * ProductType
+         * @enum {string}
+         */
+        ProductType: "jeans" | "pants" | "sweaters" | "tops" | "hoodies" | "skirts" | "shorts" | "hats";
+        /** ProductTypeOut */
+        ProductTypeOut: {
+            fit_category: components["schemas"]["FitCategory"] | null;
+            id: components["schemas"]["ProductType"];
+            /** Label */
+            label: string;
         };
         /**
          * ProfileIn
@@ -512,11 +542,8 @@ export interface components {
             fit_signal: "runs_small" | "true_to_size" | "runs_large" | "unknown";
             /** Is Official */
             is_official: boolean;
-            /**
-             * Level
-             * @enum {string}
-             */
-            level: "low" | "medium" | "high";
+            /** Level */
+            level: ("low" | "medium" | "high") | null;
             return_policy: components["schemas"]["ReturnPolicy"];
             /** Review Count */
             review_count: number | null;
@@ -551,13 +578,6 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
-        };
-        /** WhyNot */
-        WhyNot: {
-            /** Buy */
-            buy?: string | null;
-            /** Skip */
-            skip?: string | null;
         };
     };
     responses: never;

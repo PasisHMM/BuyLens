@@ -8,8 +8,8 @@ from fastapi.responses import StreamingResponse
 from app.auth import CurrentUser, current_user
 from app.config import Settings
 from app.db import Database, get_db
-from app.pipeline.fit_profile import body_measurements_cm
-from app.pipeline.models import ProfileSnapshot
+from app.pipeline.fit_profile import check_measurements_cm
+from app.pipeline.models import Basis, ProfileSnapshot
 from app.pipeline.progress import TERMINAL, EventBus, ProgressEvent
 from app.pipeline.urls import InvalidProductUrl, normalize_url, seller_domain_for
 from app.queue import CheckQueue, RateLimiter
@@ -82,7 +82,8 @@ async def create_check(
 
     snapshot = ProfileSnapshot(
         unit=profile.unit.value,
-        measurements_cm=body_measurements_cm(profile.fit),
+        measurements_cm=check_measurements_cm(profile.fit, Basis.BODY),
+        garment_cm=check_measurements_cm(profile.fit, Basis.GARMENT),
         brand_ids=[b.id for b in profile.brands],
         fit_mode=profile.fit.mode,
         quick_sizes=dict(profile.fit.quick_sizes),

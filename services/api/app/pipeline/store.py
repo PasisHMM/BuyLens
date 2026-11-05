@@ -7,17 +7,14 @@ from uuid import UUID
 from app.db import Conn, Database
 from app.pipeline.models import (
     Candidate,
-    Decision,
     Match,
     MemorySnapshot,
-    Narrative,
     ProductExtract,
     ProfileSnapshot,
     RankedOption,
     ReturnPolicy,
     SellerInfo,
     ShippingPolicy,
-    SizeChoice,
     StepId,
 )
 from app.pipeline.seller_risk import ReviewSummary
@@ -43,13 +40,7 @@ class CheckStore(Protocol):
     async def review_summary(self, listing_id: UUID) -> ReviewSummary | None: ...
     async def save_review_summary(self, listing_id: UUID, summary: ReviewSummary, model: str) -> None: ...
     async def complete_run(
-        self,
-        run_id: UUID,
-        product_id: UUID,
-        size: SizeChoice | None,
-        options: list[RankedOption],
-        decision: Decision,
-        narrative: Narrative,
+        self, run_id: UUID, product_id: UUID, selected_size: str | None, options: list[RankedOption]
     ) -> None: ...
     async def finish_run(self, run_id: UUID, status: str, error: str | None = None) -> None: ...
 
@@ -94,15 +85,14 @@ returning id
 """
 
 _INSERT_OPTION = """
-insert into check_options (run_id, rank, listing_id, total_cents, score, summary,
+insert into check_options (run_id, rank, listing_id, total_cents, summary,
                            price_check, fit_check, seller_risk)
-values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+values ($1, $2, $3, $4, $5, $6, $7, $8)
 """
 
 _COMPLETE_RUN = """
 update check_runs
-   set status = 'done', current_step = null, product_id = $2, selected_size = $3, verdict = $4,
-       headline = $5, explanation = $6, why_not = $7, completed_at = now()
+   set status = 'done', current_step = null, product_id = $2, selected_size = $3, completed_at = now()
  where id = $1
 """
 
@@ -247,48 +237,27 @@ class PgCheckStore:
             )
 
     async def complete_run(
-        self,
-        run_id: UUID,
-        product_id: UUID,
-        size: SizeChoice | None,
-        options: list[RankedOption],
-        decision: Decision,
-        narrative: Narrative,
+        self, run_id: UUID, product_id: UUID, selected_size: str | None, options: list[RankedOption]
     ) -> None:
+        """Every option is stored, including mismatches, which the API leaves out of the visible list."""
         async with self._db.service_tx() as conn:
             status = await conn.fetchval("select status from check_runs where id = $1 for update", run_id)
             if status != "running":
                 return  # cancelled while finishing
             await conn.execute("delete from check_options where run_id = $1", run_id)
-            for option, summary in zip(options, narrative.option_summaries, strict=True):
+            for option in options:
                 await conn.execute(
                     _INSERT_OPTION,
                     run_id,
                     option.rank,
                     option.candidate.listing_id,
                     option.price.total_cents,
-                    option.score,
-                    summary,
+                    option.summary,
                     option.price.model_dump(mode="json"),
                     option.fit.model_dump(mode="json"),
                     option.risk.model_dump(mode="json"),
                 )
-            why_not = {
-                "buy": narrative.why_not_buy,
-                "skip": narrative.why_not_skip,
-                "reasons": decision.reasons,
-                "written_by": narrative.written_by,
-            }
-            await conn.execute(
-                _COMPLETE_RUN,
-                run_id,
-                product_id,
-                size.display if size else None,
-                decision.verdict.value,
-                narrative.headline,
-                narrative.explanation,
-                why_not,
-            )
+            await conn.execute(_COMPLETE_RUN, run_id, product_id, selected_size)
 
     async def finish_run(self, run_id: UUID, status: str, error: str | None = None) -> None:
         async with self._db.service_tx() as conn:

@@ -10,7 +10,7 @@ from app.llm.gemini import GeminiLLM
 
 
 class Answer(BaseModel):
-    verdict: str
+    label: str
     score: int
 
 
@@ -36,15 +36,15 @@ async def test_gemini_structured_output(monkeypatch):
 
     async def fake_generate(*, model, contents, config):
         seen.update(model=model, schema=config.response_schema, mime=config.response_mime_type)
-        return SimpleNamespace(text='{"verdict": "CONSIDER", "score": 7}')
+        return SimpleNamespace(text='{"label": "yes", "score": 7}')
 
     monkeypatch.setattr(llm._client.aio.models, "generate_content", fake_generate)
     out = await llm.structured(tier="smart", system="s", prompt="p", schema=Answer)
-    assert out == Answer(verdict="CONSIDER", score=7)
+    assert out == Answer(label="yes", score=7)
     assert seen == {"model": "pro-x", "schema": Answer, "mime": "application/json"}
 
 
-@pytest.mark.parametrize("text", ["", '{"verdict": "CONSIDER"}', "not json"])
+@pytest.mark.parametrize("text", ["", '{"label": "yes"}', "not json"])
 async def test_gemini_bad_output_is_llm_error(monkeypatch, text):
     llm = GeminiLLM(gemini_settings())
 
@@ -62,11 +62,11 @@ async def test_anthropic_forced_tool_call(monkeypatch):
 
     async def fake_create(**kwargs):
         seen.update(kwargs)
-        block = SimpleNamespace(type="tool_use", input={"verdict": "BUY", "score": 9})
+        block = SimpleNamespace(type="tool_use", input={"label": "no", "score": 9})
         return SimpleNamespace(content=[block])
 
     monkeypatch.setattr(llm._client.messages, "create", fake_create)
     out = await llm.structured(tier="fast", system="s", prompt="p", schema=Answer)
-    assert out.verdict == "BUY"
+    assert out.label == "no"
     assert seen["model"] == "claude-haiku-5-5"
     assert seen["tool_choice"] == {"type": "tool", "name": "respond"}

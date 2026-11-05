@@ -2,11 +2,12 @@ import pytest
 
 from app.pipeline.cache import MemoryCache
 from app.pipeline.extract import ExtractionFailed, extract_product
-from app.pipeline.extract.attributes import infer_category, infer_stretch, parse_size_label, size_display
+from app.pipeline.extract.attributes import infer_stretch, parse_size_label, size_display
 from app.pipeline.extract.jsonld import apply_meta_fallbacks, extract_jsonld
 from app.pipeline.extract.llm import LLMProductPage, LLMSizeRow
 from app.pipeline.extract.shopify import parse_product_js
 from app.pipeline.extract.text import number_in_text, soup_of, to_cents
+from app.pipeline.taxonomy import infer_product_type
 from tests.fakes import FakeFetcher, FakeLLM, fixture, seller
 
 URL = "https://www.brand.test/us/501-original-cropped-jeans/p/A1234"
@@ -102,7 +103,7 @@ def test_size_labels(label, parsed, display):
     ],
 )
 def test_infer_category(texts, category):
-    assert infer_category(*texts) == category
+    assert infer_product_type(*texts) == category
 
 
 @pytest.mark.parametrize(

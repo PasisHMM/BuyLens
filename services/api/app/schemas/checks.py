@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field
 
-from app.pipeline.models import FitCheck, PriceCheck, SellerRisk
+from app.pipeline.models import FitCheck, FitMode, FitOutcome, PriceCheck, SellerRisk
 
 RunStatus = Literal["queued", "running", "done", "failed", "cancelled"]
 
@@ -26,7 +26,7 @@ class CheckSummary(BaseModel):
     created_at: datetime
     product_name: str | None
     image_url: str | None
-    verdict: Literal["BUY", "CONSIDER", "SKIP"] | None
+    fit_outcome: FitOutcome | None
     selected_size: str | None
     total_cents: int | None
     currency: str | None
@@ -57,9 +57,11 @@ class ProductOut(BaseModel):
     image_url: str | None
 
 
-class WhyNot(BaseModel):
-    buy: str | None = None
-    skip: str | None = None
+class HiddenMismatches(BaseModel):
+    """Options left out of the visible results because a critical measurement doesn't fit."""
+
+    count: int = 0
+    reasons: list[str] = Field(default_factory=list)
 
 
 class CheckResult(BaseModel):
@@ -73,8 +75,7 @@ class CheckResult(BaseModel):
     unit: Literal["in", "cm"]  # display unit for fit rows (values are in cm)
     product: ProductOut | None
     selected_size: str | None
-    verdict: Literal["BUY", "CONSIDER", "SKIP"] | None
-    headline: str | None
-    explanation: str | None
-    why_not: WhyNot | None
-    options: list[OptionOut]
+    fit_mode_used: FitMode | None
+    matches: list[OptionOut]
+    uncertain: list[OptionOut]
+    hidden_mismatches: HiddenMismatches

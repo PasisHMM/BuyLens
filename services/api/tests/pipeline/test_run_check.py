@@ -6,8 +6,7 @@ from uuid import uuid4
 import pytest
 
 from app.pipeline.cache import MemoryCache
-from app.pipeline.models import ProfileSnapshot, ReturnPolicy, Verdict
-from app.pipeline.narrate import LLMCopy
+from app.pipeline.models import FitCategory, FitMode, FitOutcome, ProfileSnapshot, QuickSize, ReturnPolicy
 from app.pipeline.progress import MemoryEventBus
 from app.pipeline.run_check import PipelineDeps, run_check
 from app.pipeline.seller_risk import ReviewSummary
@@ -45,11 +44,6 @@ def world(*, llm: FakeLLM | None = None, brand_page: str | None = None):
             ReviewSummary: ReviewSummary(
                 themes=["classic straight leg"], fit_signal="true_to_size", red_flags=[]
             ),
-            LLMCopy: LLMCopy(
-                headline="Good price. Check the hips before you buy.",
-                explanation="Waist and inseam look right. The seller doesn't list a hip measurement.",
-                option_summaries=["Official store with free returns.", "Lowest total cost."],
-            ),
         }
     )
     bus = MemoryEventBus()
@@ -78,18 +72,19 @@ async def test_full_check_design_case():
 
     run = store.runs[run_id]
     assert run["status"] == "done", run.get("error")
-    assert run["decision"].verdict is Verdict.CONSIDER
-    assert run["decision"].reasons == ["FIT_DATA_MISSING"]
-    assert run["size"].display == "W26 / L30"
+    # The fixture publishes garment measurements. A body profile can't be compared with them.
+    assert run["selected_size"] is None
 
     options = run["options"]
     assert [o.rank for o in options] == [1, 2]
-    assert options[0].risk.seller_name == "Levi's official store"  # value beats the $1 cheaper listing
-    assert options[0].risk.is_official
-    assert options[1].price.total_cents == 9700 and options[1].price.total_is_estimate  # shipping unknown
+    assert [o.fit.outcome for o in options] == [FitOutcome.UNCERTAIN, FitOutcome.UNCERTAIN]
+    assert options[0].price.total_cents == 9700 and options[0].price.total_is_estimate  # shipping unknown
+    assert options[1].risk.seller_name == "Levi's official store"
+    assert options[1].risk.is_official
+    assert options[1].summary == "Official store · 30-day free returns"
+    assert any("can't be compared" in r for r in options[0].fit.reasons)
     # The Shopify listing has no size chart of its own; the brand chart is reused.
-    assert {r.dimension: r.garment_cm for r in options[1].fit.rows}["waist"] == 68.6
-    assert run["narrative"].written_by == "llm"
+    assert {r.dimension: r.chart_min_cm for r in options[0].fit.rows}["waist"] == 68.6
 
     evs = await events(bus, run_id)
     assert [(e.type, e.step, e.status) for e in evs] == [
@@ -101,8 +96,8 @@ async def test_full_check_design_case():
     ]  # fmt: skip
     done = {e.step: e.detail for e in evs if e.status == "done"}
     assert done["product"] == "501® Original Cropped Jeans, medium wash"
-    assert done["prices"] == "$97.00 total across 2 sellers"
-    assert done["fit"] == "Waist, inseam compared"
+    assert done["prices"] == "97.00 USD total across 2 sellers"
+    assert done["fit"] == "No comparable size data"
     assert [e.index for e in evs if e.status == "active"] == [1, 2, 3, 4]
     assert store.steps == ["product", "prices", "fit", "seller"]
 
@@ -110,14 +105,58 @@ async def test_full_check_design_case():
     assert len(store.summaries) == 1
 
 
-async def test_template_copy_when_llm_copy_unavailable():
-    llm = FakeLLM({ReviewSummary: ReviewSummary(themes=[], fit_signal="unknown", red_flags=[])})
-    deps, store, _, _ = world(llm=llm)
+def _garment_profile(**cm: float) -> ProfileSnapshot:
+    return ProfileSnapshot(unit="cm", measurements_cm={}, garment_cm=cm)
+
+
+async def test_garment_measurements_are_compared_with_a_garment_chart():
+    deps, store, bus, _ = world()
+    store.profile = _garment_profile(waist=68.6, inseam=76.2)
     run_id = store.add_run(BRAND_URL)
     await run_check(deps, run_id)
-    narrative = store.runs[run_id]["narrative"]
-    assert narrative.written_by == "template"
-    assert narrative.headline == "Check the hips before you buy."  # no market average with 2 listings
+    run = store.runs[run_id]
+    assert run["status"] == "done", run.get("error")
+    assert run["selected_size"] == "W26 / L30"
+    # Hips are critical, and the chart doesn't list them, so a trustworthy MATCH isn't possible.
+    assert {o.fit.outcome for o in run["options"]} == {FitOutcome.UNCERTAIN}
+    done = {e.step: e.detail for e in await events(bus, run_id) if e.status == "done"}
+    assert done["fit"] == "Waist, inseam compared"
+
+
+async def test_a_verified_mismatch_is_kept_in_storage_and_ranked_last():
+    deps, store, _, _ = world()
+    store.profile = _garment_profile(waist=120.0)
+    run_id = store.add_run(BRAND_URL)
+    await run_check(deps, run_id)
+    run = store.runs[run_id]
+    assert run["status"] == "done", run.get("error")
+    assert {o.fit.outcome for o in run["options"]} == {FitOutcome.MISMATCH}
+    assert len(run["options"]) == 2
+    assert run["selected_size"] is None
+
+
+async def test_a_quick_fit_check_never_uses_saved_numbers():
+    deps, store, _, _ = world()
+    store.profile = ProfileSnapshot(
+        unit="cm",
+        measurements_cm={},
+        fit_mode=FitMode.QUICK_FIT,
+        quick_sizes={FitCategory.BOTTOMS: QuickSize.M},
+    )
+    run_id = store.add_run(BRAND_URL)
+    await run_check(deps, run_id)
+    for option in store.runs[run_id]["options"]:
+        assert option.fit.approximate is True
+        assert all(r.user_cm is None for r in option.fit.rows)
+
+
+async def test_no_llm_still_gives_a_complete_result():
+    deps, store, _, _ = world(
+        llm=FakeLLM({ReviewSummary: ReviewSummary(themes=[], fit_signal="unknown", red_flags=[])})
+    )
+    run_id = store.add_run(BRAND_URL)
+    await run_check(deps, run_id)
+    assert store.runs[run_id]["status"] == "done"
 
 
 async def test_cancel_between_steps():
@@ -176,7 +215,7 @@ async def test_unsupported_store_fails(host):
     assert store.runs[run_id]["error"] == "We don't support this store yet."
 
 
-async def test_quick_fit_check_finishes_with_not_enough_fit_data():
+async def test_quick_fit_check_without_a_matching_chart_size_finishes_uncertain():
     deps, store, _, _ = world()
     store.profile = ProfileSnapshot(
         unit="cm", measurements_cm={}, fit_mode="quick_fit", quick_sizes={"bottoms": "M"}
@@ -187,9 +226,7 @@ async def test_quick_fit_check_finishes_with_not_enough_fit_data():
 
     run = store.runs[run_id]
     assert run["status"] == "done", run.get("error")
-    fit = run["options"][0].fit
-    assert fit.rows == []
-    assert fit.confidence == "limited"
+    assert run["options"][0].fit.outcome is FitOutcome.UNCERTAIN
 
 
 def test_a_snapshot_stored_before_quick_fit_still_loads_as_personal_fit():

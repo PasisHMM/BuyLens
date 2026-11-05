@@ -3,7 +3,7 @@ from typing import Literal, Protocol, TypeVar
 from pydantic import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
-Tier = Literal["fast", "smart"]  # fast = extraction / review summaries, smart = verdict copy
+Tier = Literal["fast", "smart"]  # fast = extraction / review summaries, smart = reserved copy
 
 
 class LLMError(Exception):

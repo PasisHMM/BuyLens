@@ -1,8 +1,8 @@
-"""The check pipeline: 4 visible steps, then rank → decide → write copy → persist.
+"""The check pipeline: 4 visible steps, then rank → persist.
 
-product  (Product details found)   extract the pasted listing, choose the user's size
-prices   (Prices compared)         same product at other allow-listed sellers, totals, market avg
-fit      (Checking your fit)       deterministic Fit Check per listing
+product  (Product details found)   extract the pasted listing
+prices   (Prices compared)         same product at other allow-listed sellers, totals
+fit      (Checking your fit)       deterministic fit analysis per listing
 seller   (Reviewing seller risk)   seller data + review summary (LLM, cached per listing)
 """
 
@@ -12,12 +12,20 @@ from dataclasses import dataclass
 from uuid import UUID
 
 from app.llm import LLM
-from app.pipeline import narrate, rules
+from app.pipeline import ranking
 from app.pipeline.cache import Cache
 from app.pipeline.extract import ExtractionFailed, extract_product
 from app.pipeline.fetch import Fetcher, FetchError
-from app.pipeline.fitting import choose_size, evaluate_fit
-from app.pipeline.models import Candidate, Match, RankedOption, SellerInfo, StepId
+from app.pipeline.fit_analysis import evaluate_offer
+from app.pipeline.models import (
+    Candidate,
+    DimensionStatus,
+    Match,
+    ProductExtract,
+    RankedOption,
+    SellerInfo,
+    StepId,
+)
 from app.pipeline.pricing import evaluate_prices
 from app.pipeline.progress import CancelledByUser, EventBus, Progress
 from app.pipeline.seller_risk import ReviewSummary, evaluate_seller, summarize_reviews
@@ -42,8 +50,8 @@ class CheckFailed(Exception):
     """args[0] is shown to the user."""
 
 
-def _money(cents: int) -> str:
-    return f"${cents / 100:,.2f}"
+def _money(cents: int, currency: str) -> str:
+    return f"{cents / 100:,.2f} {currency}"
 
 
 async def _review_summary(deps: PipelineDeps, candidate: Candidate) -> ReviewSummary | None:
@@ -55,6 +63,18 @@ async def _review_summary(deps: PipelineDeps, candidate: Candidate) -> ReviewSum
     if summary and candidate.listing_id:
         await deps.store.save_review_summary(candidate.listing_id, summary, deps.llm.name)
     return summary
+
+
+def _with_product_details(listing: ProductExtract, source: ProductExtract) -> ProductExtract:
+    """The size chart comes from the product (usually the brand's page); reuse it for every
+    listing of the same product, which rarely publishes its own."""
+    return listing.model_copy(
+        update={
+            "size_chart": listing.size_chart or source.size_chart,
+            "attributes": {**source.attributes, **listing.attributes},
+            "category": listing.category or source.category,
+        }
+    )
 
 
 async def run_check(deps: PipelineDeps, run_id: UUID) -> None:
@@ -80,7 +100,6 @@ async def run_check(deps: PipelineDeps, run_id: UUID) -> None:
             brand_id = await deps.store.brand_id(extract.brand)
             source = Candidate(extract=extract, seller=seller, match=Match.EXACT, is_source=True)
             product_id, source.listing_id = await deps.store.save_listing(source, brand_id)
-            size = choose_size(extract, run.profile, run.memory, brand_id)
             s.detail = ", ".join(p for p in (extract.name, extract.attributes.get("wash")) if p)
 
         async with progress.step("prices") as s:
@@ -94,26 +113,17 @@ async def run_check(deps: PipelineDeps, run_id: UUID) -> None:
                 if c.listing_id is None:
                     _, c.listing_id = await deps.store.save_listing(c, brand_id)
             prices = evaluate_prices(candidates)
-            best_total = min(p.total_cents for p in prices.values())
+            best = min(prices.values(), key=lambda p: p.total_cents)
             n = len(candidates)
-            s.detail = f"{_money(best_total)} total across {n} seller{'s' if n != 1 else ''}"
-
-        # The size chart comes from the product (usually the brand's page); reuse it for every
-        # listing of the same product, which rarely publishes its own.
-        fit_inputs = [
-            c.extract.model_copy(
-                update={
-                    "size_chart": c.extract.size_chart or extract.size_chart,
-                    "attributes": {**extract.attributes, **c.extract.attributes},
-                    "category": c.extract.category or extract.category,
-                }
+            s.detail = (
+                f"{_money(best.total_cents, best.currency)} total across {n} seller{'s' if n != 1 else ''}"
             )
-            for c in candidates
-        ]
+
+        fit_inputs = [_with_product_details(c.extract, extract) for c in candidates]
 
         async with progress.step("fit") as s:
-            fits = [evaluate_fit(f, size, run.profile, run.memory, brand_id) for f in fit_inputs]
-            compared = [r.dimension for r in fits[0].rows if r.garment_cm is not None]
+            fits = [evaluate_offer(f, run.profile) for f in fit_inputs]
+            compared = [r.dimension for r in fits[0].rows if r.status is not DimensionStatus.MISSING]
             s.detail = (
                 f"{', '.join(compared).capitalize()} compared" if compared else "No comparable size data"
             )
@@ -123,24 +133,17 @@ async def run_check(deps: PipelineDeps, run_id: UUID) -> None:
             risks = [evaluate_seller(c, summary) for c, summary in zip(candidates, summaries, strict=True)]
             s.detail = "Reviews and return policy checked"
 
-        options = []
-        for i, c in enumerate(candidates):
-            if risks[i].fit_signal in ("runs_small", "runs_large"):  # reviews refine the fit card
-                fits[i] = evaluate_fit(
-                    fit_inputs[i], size, run.profile, run.memory, brand_id, risks[i].fit_signal
-                )
-            score = rules.score(prices[i], fits[i], risks[i], run.memory.decision)
-            options.append(
-                RankedOption(rank=0, candidate=c, price=prices[i], fit=fits[i], risk=risks[i], score=score)
-            )
-        ranked = rules.rank(options)
-        decision = rules.decide(ranked[0], run.memory.decision)
-        copy = await narrate.write_copy(deps.llm, extract, ranked, decision)
+        ranked = ranking.rank(
+            [
+                RankedOption(rank=0, candidate=c, price=prices[i], fit=fit, risk=risk,
+                             summary=ranking.seller_summary(risk))
+                for i, (c, fit, risk) in enumerate(zip(candidates, fits, risks, strict=True))
+            ]
+        )  # fmt: skip
 
-        await deps.store.complete_run(run_id, product_id, size, ranked, decision, copy)
+        await deps.store.complete_run(run_id, product_id, ranking.selected_size(ranked), ranked)
         await progress.finish("complete")
-        log.info("check_done", extra={"run_id": str(run_id), "verdict": decision.verdict.value,
-                                      "options": len(ranked), "copy": copy.written_by})  # fmt: skip
+        log.info("check_done", extra={"run_id": str(run_id), "options": len(ranked)})
     except CancelledByUser:
         await deps.store.finish_run(run_id, "cancelled")
         await progress.finish("cancelled", "Check cancelled.")

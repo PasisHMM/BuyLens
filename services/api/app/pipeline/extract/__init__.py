@@ -8,7 +8,7 @@ import re
 
 from app.llm import LLM
 from app.pipeline.cache import Cache
-from app.pipeline.extract.attributes import infer_category, infer_fit, infer_stretch, infer_wash
+from app.pipeline.extract.attributes import infer_fit, infer_stretch, infer_wash
 from app.pipeline.extract.jsonld import apply_meta_fallbacks, canonical_link, extract_jsonld
 from app.pipeline.extract.llm import llm_extract
 from app.pipeline.extract.shopify import fetch_shopify_product
@@ -16,6 +16,7 @@ from app.pipeline.extract.sizechart import find_size_chart
 from app.pipeline.extract.text import clean_text, soup_of
 from app.pipeline.fetch import Fetcher, FetchError
 from app.pipeline.models import ProductExtract, SellerInfo
+from app.pipeline.taxonomy import infer_product_type
 from app.pipeline.urls import InvalidProductUrl, domain_matches, host_of, normalize_url
 
 SIZE_CHART_HINT = re.compile(r"size (chart|guide)|waist|inseam", re.IGNORECASE)
@@ -49,8 +50,8 @@ def _enrich(extract: ProductExtract) -> ProductExtract:
     attrs = extract.attributes
     description = attrs.get("description")
     texts = (extract.name, extract.color, description)
-    extract.category = extract.category or infer_category(extract.name, description)
-    if (category := infer_category(extract.category)) is not None:
+    extract.category = extract.category or infer_product_type(extract.name, description)
+    if (category := infer_product_type(extract.category)) is not None:
         extract.category = category  # normalize "Women's Jeans" → "jeans"
     if "stretch" not in attrs:
         attrs["stretch"] = infer_stretch(attrs.get("fabric"), *texts)
