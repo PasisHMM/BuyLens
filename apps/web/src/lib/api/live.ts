@@ -9,6 +9,7 @@ import {
   ApiError,
   type ApiClient,
   type Brand,
+  type Catalog,
   type CheckResult,
   type CheckSummary,
   type Feedback,
@@ -85,6 +86,11 @@ export class LiveApiClient implements ApiClient {
     return this.request(`/v1/brands?${params}`, {}, { auth: false });
   }
 
+  getMeasurements(): Promise<Catalog> {
+    return this.request("/v1/measurements", {}, { auth: false });
+  }
+
+  // The backend's allow-list decides which stores work, so no shop is sent.
   createCheck(url: string): Promise<{ id: string }> {
     return this.request("/v1/checks", {
       method: "POST",

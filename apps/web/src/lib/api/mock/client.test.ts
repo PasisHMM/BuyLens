@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { ProfileIn } from "../types";
 import { MockApiClient } from "./client";
+import { BRANDS } from "./scenarios";
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const data = new Map(Object.entries(initial));
@@ -77,5 +79,196 @@ describe("MockApiClient createCheck", () => {
       new MockApiClient().createCheck("https://www.levi.com/p/501"),
       { status: 409, message: "Save your measurements first." },
     );
+  });
+
+  it("starts a Merchandizable check for a Quick Fit profile with one size", async () => {
+    useStorage();
+    const api = new MockApiClient();
+    await settle(
+      api.saveProfile({ fit_mode: "quick_fit", quick_sizes: { tops: "S" } }),
+    );
+    const { id } = await settle(
+      api.createCheck(DEMO_SWEATER, { shopId: "merchandizable" }),
+    );
+    await vi.runAllTimersAsync();
+    const result = await settle(api.getCheck(id));
+    expect(result?.status).toBe("done");
+    expect(result?.verdict).toBeNull();
+    expect(result?.demo?.shop_id).toBe("merchandizable");
+    expect(result?.demo?.fit.outcome).toBe("match");
+    expect(result?.demo?.fit.size_label).toBe("S");
+  });
+
+  it("lists a finished demo check with its EUR price", async () => {
+    useStorage();
+    const api = new MockApiClient();
+    await settle(
+      api.saveProfile({ fit_mode: "quick_fit", quick_sizes: { tops: "S" } }),
+    );
+    await settle(api.createCheck(DEMO_SWEATER));
+    await vi.runAllTimersAsync();
+    expect((await settle(api.recentChecks(1)))[0]).toMatchObject({
+      product_name: "Demo Relaxed Sweater",
+      total_cents: 4900,
+      currency: "EUR",
+      verdict: null,
+    });
+  });
+
+  it("rejects an unknown page on the demo shop's host", async () => {
+    useStorage();
+    const api = new MockApiClient();
+    await settle(
+      api.saveProfile({ fit_mode: "quick_fit", quick_sizes: { tops: "S" } }),
+    );
+    await expectRejection(
+      api.createCheck("https://merchandizable.example/p/unknown"),
+      { status: 422 },
+    );
+  });
+
+  it("still runs a stored sample without measurements, reporting no fit data", async () => {
+    useStorage();
+    const api = new MockApiClient();
+    await settle(
+      api.saveProfile({ fit_mode: "quick_fit", quick_sizes: { bottoms: "M" } }),
+    );
+    const { id } = await settle(api.createCheck("https://www.levi.com/p/501"));
+    await vi.runAllTimersAsync();
+    const result = await settle(api.getCheck(id));
+    expect(result?.status).toBe("done");
+    expect(result?.options[0].fit_check.rows).toEqual([]);
+    expect(result?.options[0].fit_check.confidence).toBe("limited");
+    expect(result?.options[0].listing_id).toBeTruthy();
+  });
+});
+
+const DEMO_SWEATER = "https://merchandizable.example/p/demo-relaxed-sweater";
+const QUICK = {
+  fit_mode: "quick_fit",
+  size_system: "eu",
+  quick_sizes: { tops: "S", bottoms: "M" },
+} as const;
+const PERSONAL: ProfileIn = {
+  fit_mode: "personal_fit",
+  unit: "cm",
+  measurements: [
+    { dimension: "waist", value: 66, basis: "body" },
+    { dimension: "hips", value: 98, basis: "garment", note: "My jeans" },
+  ],
+};
+
+describe("MockApiClient fit modes", () => {
+  it("keeps Tops and Bottoms sizes separate", async () => {
+    useStorage();
+    const api = new MockApiClient();
+    await settle(api.saveProfile(QUICK));
+    expect(await settle(api.getProfile())).toMatchObject({
+      fit_mode: "quick_fit",
+      size_system: "eu",
+      quick_sizes: { tops: "S", bottoms: "M" },
+      measurements: [],
+      unit: "cm",
+    });
+  });
+
+  it("switching modes in either direction deletes nothing", async () => {
+    useStorage();
+    const api = new MockApiClient();
+    await settle(api.saveProfile(QUICK));
+    await settle(api.saveProfile(PERSONAL));
+    await settle(api.saveProfile({ fit_mode: "quick_fit" }));
+    const quick = await settle(api.getProfile());
+    expect(quick?.fit_mode).toBe("quick_fit");
+    expect(quick?.quick_sizes).toEqual({ tops: "S", bottoms: "M" });
+    expect(quick?.measurements).toEqual([
+      { dimension: "waist", value: 66, basis: "body", note: null },
+      { dimension: "hips", value: 98, basis: "garment", note: "My jeans" },
+    ]);
+    await settle(api.saveProfile({ fit_mode: "personal_fit" }));
+    expect((await settle(api.getProfile()))?.quick_sizes).toEqual({
+      tops: "S",
+      bottoms: "M",
+    });
+  });
+
+  it("keeps the older waist, inseam and hips fields filled for older screens", async () => {
+    useStorage();
+    const api = new MockApiClient();
+    await settle(api.saveProfile(PERSONAL));
+    expect(await settle(api.getProfile())).toMatchObject({
+      waist: 66,
+      hips: 98,
+      inseam: null,
+    });
+  });
+
+  it("a section left out keeps saved brands", async () => {
+    useStorage();
+    const api = new MockApiClient();
+    const brand = BRANDS[0];
+    await settle(
+      api.saveProfile({
+        unit: "in",
+        waist: 26,
+        inseam: 30,
+        brand_ids: [brand.id],
+      }),
+    );
+    await settle(api.saveProfile(QUICK));
+    expect((await settle(api.getProfile()))?.brands).toEqual([brand]);
+  });
+
+  it.each([
+    [{ fit_mode: "quick_fit" as const }, "Pick a size"],
+    [{ fit_mode: "personal_fit" as const }, "at least one measurement"],
+  ])("rejects a mode with nothing to use: %j", async (body, message) => {
+    useStorage();
+    const assertion = expect(new MockApiClient().saveProfile(body)).rejects.toThrow(
+      message,
+    );
+    await vi.runAllTimersAsync();
+    await assertion;
+  });
+
+  it("reads a profile saved before fit modes as Personal Fit with the same values", async () => {
+    useStorage({
+      "bl:profile": JSON.stringify({
+        unit: "in",
+        waist: 26,
+        inseam: 30,
+        hips: null,
+        brands: [],
+        updated_at: "2026-10-01T00:00:00Z",
+      }),
+    });
+    expect(await settle(new MockApiClient().getProfile())).toMatchObject({
+      fit_mode: "personal_fit",
+      unit: "in",
+      waist: 26,
+      inseam: 30,
+      quick_sizes: {},
+      measurements: [
+        { dimension: "waist", value: 26, basis: "body", note: null },
+        { dimension: "inseam", value: 30, basis: "body", note: null },
+      ],
+    });
+  });
+
+  it("treats a stored value of the wrong shape as no profile", async () => {
+    useStorage({ "bl:v2:profile": JSON.stringify({ unit: 5 }) });
+    expect(await settle(new MockApiClient().getProfile())).toBeNull();
+  });
+});
+
+describe("MockApiClient catalog", () => {
+  it("returns the catalog generated from Python", async () => {
+    useStorage();
+    const catalog = await settle(new MockApiClient().getMeasurements());
+    expect(catalog.quick_sizes).toEqual(["XS", "S", "M", "L", "XL"]);
+    expect(catalog.dimensions.find((d) => d.id === "waist")).toMatchObject({
+      min_cm: 45,
+      max_cm: 200,
+    });
   });
 });

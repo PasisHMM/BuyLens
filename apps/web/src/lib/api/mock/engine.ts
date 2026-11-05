@@ -188,7 +188,9 @@ function evaluateFit(
     .filter((r) => r.match === "missing")
     .map((r) => r.dimension);
   const confidence: FitCheck["confidence"] =
-    missing.length === 0
+    rows.length === 0
+      ? "limited" // nothing to compare, such as a Quick Fit profile
+      : missing.length === 0
       ? "high"
       : missing.length === 1 && missing[0] === "inseam"
         ? "medium"
@@ -424,6 +426,7 @@ export function runScenario(
     const risk = evaluateRisk(o);
     const option: OptionOut = {
       rank: 0,
+      listing_id: `${s.key}:${o.seller.domain}`,
       seller: o.seller,
       url: o.url,
       total_cents: price.total_cents,
