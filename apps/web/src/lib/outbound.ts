@@ -16,20 +16,26 @@ export type Offer = {
 
 export type OutboundLink = { href: string; host: string };
 
-/** The URL if it's a safe web link to a named host; otherwise null. */
-export function parseOutboundUrl(raw: unknown): URL | null {
-  if (typeof raw !== "string") return null;
+function parsed(raw: string): URL | null {
   // The URL parser silently drops surrounding spaces and inner newlines, which hides odd input.
   if (raw !== raw.trim() || /[\u0000-\u001f]/.test(raw)) return null;
-  let url: URL;
   try {
-    url = new URL(raw);
+    return new URL(raw);
   } catch {
     return null;
   }
-  if (url.protocol !== "https:" && url.protocol !== "http:") return null;
-  if (url.username || url.password) return null; // "https://shop.test@evil.test" hides the real host
-  return url.hostname.includes(".") ? url : null;
+}
+
+function isSafeWebLink(url: URL): boolean {
+  const isWeb = url.protocol === "https:" || url.protocol === "http:";
+  const hidesHost = Boolean(url.username || url.password); // "https://shop.test@evil.test"
+  return isWeb && !hidesHost && url.hostname.includes(".");
+}
+
+/** The URL if it's a safe web link to a named host; otherwise null. */
+export function parseOutboundUrl(raw: unknown): URL | null {
+  const url = typeof raw === "string" ? parsed(raw) : null;
+  return url && isSafeWebLink(url) ? url : null;
 }
 
 export function resolveOutboundLink(offer: Offer): OutboundLink | null {

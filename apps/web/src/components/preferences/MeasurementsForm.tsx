@@ -6,7 +6,7 @@ import { useEffect, useId, useState } from "react";
 import { useApp } from "@/app/providers";
 import { Button, Card, cx } from "@/components/ui/primitives";
 import {
-  ApiError,
+  errorMessage,
   type Basis,
   type Brand,
   type Catalog,
@@ -103,6 +103,122 @@ function toMeasurements(fields: Field[], entries: Entries): MeasurementIn[] {
   });
 }
 
+function convertEntries(entries: Entries, next: Unit): Entries {
+  return Object.fromEntries(
+    Object.entries(entries).map(([dim, entry]) => {
+      const n = parse(entry.value);
+      const value =
+        n == null
+          ? entry.value
+          : fmtNumber(next === "cm" ? toCm(n, "in") : fromCm(n, "in"));
+      return [dim, { ...entry, value }];
+    }),
+  );
+}
+
+function Intro({ waist, unit }: { waist: string | undefined; unit: Unit }) {
+  return (
+    <section>
+      <p className="eyebrow text-muted">A little about you</p>
+      <h1 className="mt-4 font-serif text-[40px] leading-[1.1] tracking-tight sm:mt-8 sm:text-[60px]">
+        Better buys start with your fit.
+      </h1>
+      <p className="mt-5 max-w-[420px] text-base leading-relaxed text-muted sm:mt-8">
+        Sizes vary. Your measurements don’t. Add the ones you know; anything
+        missing makes a result uncertain, never wrong.
+      </p>
+      <div className="hidden lg:block">
+        <RulerIllustration value={parse(waist ?? "")} unit={unit} />
+        <p className="mt-6 max-w-[420px] text-xs leading-relaxed text-muted">
+          Private by design. Your profile is used only to personalize your
+          product checks.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function FieldGrid({
+  fields,
+  unit,
+  entries,
+  errors,
+  onChange,
+}: {
+  fields: Field[];
+  unit: Unit;
+  entries: Entries;
+  errors: Partial<Record<Dim, string>>;
+  onChange: (dim: Dim, change: Partial<Entry>) => void;
+}) {
+  return (
+    <div className="mt-7 grid gap-x-4 gap-y-6 sm:grid-cols-2">
+      {fields.map((f) => (
+        <MeasurementField
+          key={f.id}
+          field={f}
+          unit={unit}
+          entry={entries[f.id] ?? EMPTY}
+          error={errors[f.id]}
+          onChange={(change) => onChange(f.id, change)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function SaveRow({ saving, error }: { saving: boolean; error: string | null }) {
+  return (
+    <>
+      {error && (
+        <p role="alert" className="mt-6 text-sm text-skip">
+          {error}
+        </p>
+      )}
+      <Button type="submit" className="mt-8 w-full" disabled={saving}>
+        {saving ? "Saving…" : "Save & Continue"}
+      </Button>
+      <p className="mt-4 text-center text-xs text-muted">
+        You can update these anytime.
+      </p>
+    </>
+  );
+}
+
+function UnitSwitch({
+  unit,
+  onChange,
+}: {
+  unit: Unit;
+  onChange: (unit: Unit) => void;
+}) {
+  return (
+    <div
+      role="radiogroup"
+      aria-label="Unit"
+      className="flex items-center rounded-md bg-subtle px-1 py-0.5 text-xs"
+    >
+      {(["in", "cm"] as Unit[]).map((u, i) => (
+        <span key={u} className="flex items-center">
+          {i > 0 && <span className="px-0.5 text-faint">/</span>}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={unit === u}
+            onClick={() => onChange(u)}
+            className={cx(
+              "rounded px-1.5 py-1",
+              unit === u ? "font-semibold text-ink" : "text-muted",
+            )}
+          >
+            {u === "in" ? "IN" : "cm"}
+          </button>
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function MeasurementsForm() {
   const { api, profile, profileLoaded } = useApp();
   const [catalog, setCatalog] = useState<Catalog | null>(null);
@@ -144,18 +260,7 @@ function Form({ profile, fields }: { profile: Profile | null; fields: Field[] })
 
   function switchUnit(next: Unit) {
     if (next === unit) return;
-    setEntries((current) =>
-      Object.fromEntries(
-        Object.entries(current).map(([dim, entry]) => {
-          const n = parse(entry.value);
-          const value =
-            n == null
-              ? entry.value
-              : fmtNumber(next === "cm" ? toCm(n, "in") : fromCm(n, "in"));
-          return [dim, { ...entry, value }];
-        }),
-      ),
-    );
+    setEntries((current) => convertEntries(current, next));
     setUnit(next);
     setErrors({});
   }
@@ -190,79 +295,29 @@ function Form({ profile, fields }: { profile: Profile | null; fields: Field[] })
       await reloadProfile();
       router.push("/");
     } catch (err) {
-      setSaveError(
-        err instanceof ApiError
-          ? err.message
-          : "We couldn't save. Please try again.",
-      );
+      setSaveError(errorMessage(err, "We couldn't save. Please try again."));
       setSaving(false);
     }
   }
 
   return (
     <div className="mx-auto grid max-w-[1248px] gap-10 px-4 py-10 sm:px-8 lg:grid-cols-[1fr_minmax(0,640px)] lg:gap-16 lg:py-20">
-      <section>
-        <p className="eyebrow text-muted">A little about you</p>
-        <h1 className="mt-4 font-serif text-[40px] leading-[1.1] tracking-tight sm:mt-8 sm:text-[60px]">
-          Better buys start with your fit.
-        </h1>
-        <p className="mt-5 max-w-[420px] text-base leading-relaxed text-muted sm:mt-8">
-          Sizes vary. Your measurements don’t. Add the ones you know; anything
-          missing makes a result uncertain, never wrong.
-        </p>
-        <div className="hidden lg:block">
-          <RulerIllustration
-            value={parse(entries.waist?.value ?? "")}
-            unit={unit}
-          />
-          <p className="mt-6 max-w-[420px] text-xs leading-relaxed text-muted">
-            Private by design. Your profile is used only to personalize your
-            product checks.
-          </p>
-        </div>
-      </section>
+      <Intro waist={entries.waist?.value} unit={unit} />
 
       <form id={formId} onSubmit={save} noValidate>
         <Card className="border-0 bg-transparent p-0 lg:border lg:bg-frame lg:p-8">
           <div className="flex items-center justify-between">
             <h2 className="text-xl">Your measurements</h2>
-            <div
-              role="radiogroup"
-              aria-label="Unit"
-              className="flex items-center rounded-md bg-subtle px-1 py-0.5 text-xs"
-            >
-              {(["in", "cm"] as Unit[]).map((u, i) => (
-                <span key={u} className="flex items-center">
-                  {i > 0 && <span className="px-0.5 text-faint">/</span>}
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={unit === u}
-                    onClick={() => switchUnit(u)}
-                    className={cx(
-                      "rounded px-1.5 py-1",
-                      unit === u ? "font-semibold text-ink" : "text-muted",
-                    )}
-                  >
-                    {u === "in" ? "IN" : "cm"}
-                  </button>
-                </span>
-              ))}
-            </div>
+            <UnitSwitch unit={unit} onChange={switchUnit} />
           </div>
 
-          <div className="mt-7 grid gap-x-4 gap-y-6 sm:grid-cols-2">
-            {fields.map((f) => (
-              <MeasurementField
-                key={f.id}
-                field={f}
-                unit={unit}
-                entry={entries[f.id] ?? EMPTY}
-                error={errors[f.id]}
-                onChange={(change) => update(f.id, change)}
-              />
-            ))}
-          </div>
+          <FieldGrid
+            fields={fields}
+            unit={unit}
+            entries={entries}
+            errors={errors}
+            onChange={update}
+          />
 
           <h3 className="mt-9 text-lg">Brands you like</h3>
           <p className="mt-1.5 text-sm text-muted">
@@ -272,17 +327,7 @@ function Form({ profile, fields }: { profile: Profile | null; fields: Field[] })
             <BrandChips selected={brands} onChange={setBrands} />
           </div>
 
-          {saveError && (
-            <p role="alert" className="mt-6 text-sm text-skip">
-              {saveError}
-            </p>
-          )}
-          <Button type="submit" className="mt-8 w-full" disabled={saving}>
-            {saving ? "Saving…" : "Save & Continue"}
-          </Button>
-          <p className="mt-4 text-center text-xs text-muted">
-            You can update these anytime.
-          </p>
+          <SaveRow saving={saving} error={saveError} />
         </Card>
       </form>
     </div>

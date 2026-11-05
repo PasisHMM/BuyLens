@@ -95,6 +95,11 @@ export class ApiError extends Error {
   }
 }
 
+/** The server's own message when it sent one; otherwise the caller's fallback. */
+export function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof ApiError ? err.message : fallback;
+}
+
 export interface ApiClient {
   mode: "mock" | "live";
   getProfile(): Promise<Profile | null>;

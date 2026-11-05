@@ -8,7 +8,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { Profile } from "@/lib/api";
+import { ApiError, type Profile } from "@/lib/api";
 import { CheckForm } from "./CheckForm";
 
 const app = vi.hoisted(() => ({
@@ -220,6 +220,17 @@ describe("Quick Fit", () => {
     expect(radio("Bottoms", "L").checked).toBe(true);
   });
 
+  it("shows the server's own message when it rejects the check", async () => {
+    app.api.createCheck.mockRejectedValue(new ApiError(422, "No sample data."));
+    render(<CheckForm onStarted={onStarted} />);
+    fireEvent.click(radio("Tops", "S"));
+    setLink(SWEATER);
+    analyze();
+    await waitFor(() =>
+      expect(screen.getByRole("alert").textContent).toBe("No sample data."),
+    );
+  });
+
   it("shows a save or server error", async () => {
     app.api.createCheck.mockRejectedValue(new Error("boom"));
     render(<CheckForm onStarted={onStarted} />);
@@ -261,6 +272,13 @@ describe("Personal Fit", () => {
     expect(app.api.saveProfile).toHaveBeenCalledWith({
       fit_mode: "personal_fit",
     });
+  });
+
+  it("offers to add measurements when none are saved", () => {
+    render(<CheckForm onStarted={onStarted} />);
+    fireEvent.click(radio("Fit mode", "personal_fit"));
+    expect(screen.getByText("No measurements saved yet.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Add" })).toBeTruthy();
   });
 
   it("asks for measurements without redirecting anywhere", () => {

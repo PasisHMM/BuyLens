@@ -29,6 +29,40 @@ const VALUE_PROPS = [
   },
 ];
 
+function readableLink(url: string): string {
+  try {
+    const { pathname } = new URL(url.includes("://") ? url : `https://${url}`);
+    const page = pathname.split("/").filter(Boolean).pop();
+    return page ? `${hostOf(url)} / ${page}` : hostOf(url);
+  } catch {
+    return url;
+  }
+}
+
+function RecentCheck({ recent }: { recent: CheckSummary }) {
+  return (
+    <Link
+      href={`/checks/${recent.id}`}
+      className="mt-12 flex items-center gap-4 rounded-xl bg-subtle p-4 hover:bg-[#e9e6e1] sm:mt-14"
+    >
+      <ProductImage name={recent.product_name ?? "Product"} size="sm" />
+      <div className="min-w-0 flex-1">
+        <p className="eyebrow font-normal text-muted">A recent check</p>
+        <p className="mt-1 truncate text-[15px]">{recent.product_name}</p>
+        <p className="num mt-1 text-sm text-muted">
+          {fmtMoney(recent.total_cents, recent.currency ?? "USD")}
+          {recent.selected_size && ` · ${recent.selected_size}`}
+        </p>
+      </div>
+      {recent.verdict && (
+        <span className="hidden sm:block">
+          <VerdictBadge verdict={recent.verdict} />
+        </span>
+      )}
+    </Link>
+  );
+}
+
 export function Analyzer() {
   const router = useRouter();
   const { api, profileLoaded } = useApp();
@@ -59,17 +93,6 @@ export function Analyzer() {
     setRunId(null);
   }, [api, runId]);
 
-  const linkLabel = (() => {
-    try {
-      const u = new URL(
-        startedUrl.includes("://") ? startedUrl : `https://${startedUrl}`,
-      );
-      return `${hostOf(startedUrl)}${u.pathname.length > 1 ? ` / ${u.pathname.split("/").filter(Boolean).pop()}` : ""}`;
-    } catch {
-      return startedUrl;
-    }
-  })();
-
   return (
     <div className="mx-auto max-w-[992px] px-4 py-10 sm:px-8 sm:py-20">
       <p className="eyebrow text-muted">Less guesswork. Better buys.</p>
@@ -98,32 +121,12 @@ export function Analyzer() {
         ))}
       </div>
 
-      {recent && (
-        <Link
-          href={`/checks/${recent.id}`}
-          className="mt-12 flex items-center gap-4 rounded-xl bg-subtle p-4 hover:bg-[#e9e6e1] sm:mt-14"
-        >
-          <ProductImage name={recent.product_name ?? "Product"} size="sm" />
-          <div className="min-w-0 flex-1">
-            <p className="eyebrow font-normal text-muted">A recent check</p>
-            <p className="mt-1 truncate text-[15px]">{recent.product_name}</p>
-            <p className="num mt-1 text-sm text-muted">
-              {fmtMoney(recent.total_cents, recent.currency ?? "USD")}
-              {recent.selected_size && ` · ${recent.selected_size}`}
-            </p>
-          </div>
-          {recent.verdict && (
-            <span className="hidden sm:block">
-              <VerdictBadge verdict={recent.verdict} />
-            </span>
-          )}
-        </Link>
-      )}
+      {recent && <RecentCheck recent={recent} />}
 
       <ProgressDialog
         key={runId ?? "idle"}
         runId={runId}
-        linkLabel={linkLabel}
+        linkLabel={readableLink(startedUrl)}
         onCancel={onCancel}
         onComplete={onComplete}
         onClose={onClose}

@@ -9,6 +9,7 @@ from app.pipeline.demo_shop import (
     ChartRange,
     ChartRow,
     DemoProduct,
+    _product_out,
     personal_fit,
     prototype_fixture,
     quick_fit,
@@ -153,8 +154,9 @@ def test_a_secondary_measurement_outside_the_range_is_uncertain_never_a_mismatch
 def test_impossible_chart_rows_are_rejected() -> None:
     with pytest.raises(ValueError, match="min_cm"):
         ChartRange(90.0, 90.0)
-    with pytest.raises(ValueError, match="plausible"):
-        ChartRow("S", "36", "8", {D.CHEST: ChartRange(10.0, 20.0)})
+    for implausible in (ChartRange(10.0, 80.0), ChartRange(80.0, 500.0)):  # either end alone is enough
+        with pytest.raises(ValueError, match="plausible"):
+            ChartRow("S", "36", "8", {D.CHEST: implausible})
 
 
 def test_a_complete_comparison_can_match_at_the_inclusive_ends() -> None:
@@ -241,6 +243,12 @@ def test_fixture_holds_every_outcome_the_browser_may_show() -> None:
     assert jeans["quick_fit"]["M"]["outcome"] == "uncertain"
 
 
+def test_fixture_for_a_product_without_fit_rules_is_uncertain_for_every_size() -> None:
+    outcomes = _product_out(_product(None))["quick_fit"]
+    assert {o["outcome"] for o in outcomes.values()} == {"uncertain"}
+    assert all(o["reasons"] == ["No fit rules for this product type yet."] for o in outcomes.values())
+
+
 def test_fixture_chart_keeps_exact_numbers_and_separate_labels() -> None:
     rows = prototype_fixture()["chart"]["rows"]
     assert len(rows) == 9
@@ -252,3 +260,9 @@ def test_fixture_chart_keeps_exact_numbers_and_separate_labels() -> None:
         "waist": {"min_cm": 74.0, "max_cm": 82.5},
         "hips": {"min_cm": 97.5, "max_cm": 103.5},
     }
+
+
+def test_fixture_reads_a_bottoms_product_by_its_own_category() -> None:
+    trousers = next(p for p in prototype_fixture()["products"] if p["id"] == "demo-wide-leg-trousers")
+    assert trousers["quick_fit"]["M"]["outcome"] == "match"
+    assert trousers["quick_fit"]["none"]["reasons"] == ["Add your Bottoms size."]

@@ -195,18 +195,27 @@ def _gaps(needed: frozenset[Dimension], mine: Mapping[Dimension, float]) -> list
     return _unlisted(needed) + missing
 
 
+def _comparable(group: frozenset[Dimension], mine: Mapping[Dimension, float]) -> list[Dimension]:
+    return [d for d in Dimension if d in group and d in mine and DEMO_CHART.lists(d)]
+
+
+def _within(
+    rows: list[ChartRow], dimensions: list[Dimension], mine: Mapping[Dimension, float], tolerance: float
+) -> list[ChartRow]:
+    return [r for r in rows if all(r.ranges[d].covers(mine[d], tolerance) for d in dimensions)]
+
+
 def _compare(
     rows: list[ChartRow], rule: CategoryRule, mine: Mapping[Dimension, float], gaps: list[str]
 ) -> DemoFit:
     tolerance = rule.tolerance_cm(DEMO_CHART.basis)
-    critical = [d for d in Dimension if d in rule.critical and d in mine and DEMO_CHART.lists(d)]
-    fitting = [r for r in rows if all(r.ranges[d].covers(mine[d], tolerance) for d in critical)]
+    critical = _comparable(rule.critical, mine)
+    fitting = _within(rows, critical, mine, tolerance)
     if not fitting:
-        return DemoFit(
-            FitOutcome.MISMATCH, None, (f"No listed size is within tolerance for {', '.join(critical)}.",)
-        )
-    secondary = [d for d in Dimension if d in rule.secondary and d in mine and DEMO_CHART.lists(d)]
-    fully = [r for r in fitting if all(r.ranges[d].covers(mine[d], tolerance) for d in secondary)]
+        reason = f"No listed size is within tolerance for {', '.join(critical)}."
+        return DemoFit(FitOutcome.MISMATCH, None, (reason,))
+    secondary = _comparable(rule.secondary, mine)
+    fully = _within(fitting, secondary, mine, tolerance)
     if not fully:
         names = ", ".join(secondary).capitalize()
         return _uncertain(f"{names} is outside this size's range.", *gaps, size_label=fitting[0].label)
@@ -229,7 +238,7 @@ def personal_fit(product: DemoProduct, measurements: Mapping[Dimension, Measurem
     # A garment measurement says nothing about a body chart, so it counts as missing.
     mine = {d: m.value_cm for d, m in measurements.items() if m.basis is DEMO_CHART.basis}
     gaps = _gaps(rule.critical | rule.secondary, mine)
-    if not any(d in mine and DEMO_CHART.lists(d) for d in rule.critical):
+    if not _comparable(rule.critical, mine):
         return _uncertain("The demo chart is a body chart, so it needs body measurements.", *gaps)
     return _compare(rows, rule, mine, gaps)
 

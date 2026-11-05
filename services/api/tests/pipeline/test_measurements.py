@@ -207,6 +207,11 @@ def test_size_reference_accepts_the_plausible_limits_as_its_ends() -> None:
     assert _waist_range(45.0, 200.0).covers(45.0)
 
 
+def test_a_tolerance_below_one_centimeter_is_allowed() -> None:
+    rule = CategoryRule(frozenset({D.WAIST}), frozenset(), 0.5, 0.5)
+    assert rule.tolerance_cm(Basis.BODY) == 0.5
+
+
 @pytest.mark.parametrize(("body", "garment"), [(0.0, 1.0), (1.0, 0.0)], ids=["body", "garment"])
 def test_a_tolerance_of_zero_is_rejected(body: float, garment: float) -> None:
     with pytest.raises(ValueError, match="positive"):

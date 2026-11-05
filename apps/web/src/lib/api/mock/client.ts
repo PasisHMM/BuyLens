@@ -7,6 +7,7 @@ import { DEFAULT_SHOP, shopForUrl } from "@/lib/shops";
 import {
   ApiError,
   type ApiClient,
+  type Brand,
   type Catalog,
   type CheckResult,
   type CheckSummary,
@@ -15,12 +16,13 @@ import {
   type Profile,
   type ProfileIn,
   type ProgressEvent,
+  type OptionOut,
   type ProfileMeasurement,
   type StepId,
 } from "../types";
 import catalog from "./catalog.json";
 import { buildDemoCheck, demoProductForUrl, type DemoProduct } from "./demo";
-import { runScenario } from "./engine";
+import { runScenario, type Scenario } from "./engine";
 import {
   BRANDS,
   KNOWN_WITHOUT_SAMPLE,
@@ -59,12 +61,10 @@ type StoredCheck = {
   profile: { unit: "in" | "cm"; cm: Record<string, number> };
   result: CheckView | null;
   shopId?: string;
-  demoProductId?: string;
   demoProfile?: Profile;
 };
 
 type StepPlan = {
-  name: string;
   result: CheckView | null;
   details: Record<StepId, string>;
   failure?: { atStep: StepId; message: string };
@@ -167,6 +167,94 @@ function hasFitData(profile: Profile | null): profile is Profile {
   );
 }
 
+/** What a link points at. A link the prototype has no data for is rejected here. */
+function checkTarget(url: string): {
+  store?: string;
+  demoProduct?: DemoProduct;
+} {
+  const host = hostOf(url);
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host))
+    throw new ApiError(422, "That doesn't look like a product link.");
+  const matches = (d: string) => host === d || host.endsWith(`.${d}`);
+  const demoProduct = demoProductForUrl(url);
+  const store = Object.keys(MOCK_STORES).find(matches);
+  if (demoProduct || store) return { store, demoProduct };
+  if (shopForUrl(url)?.id === DEFAULT_SHOP.id)
+    throw new ApiError(
+      422,
+      "This page has no sample data in the prototype. Try one of the sample products.",
+    );
+  if (KNOWN_WITHOUT_SAMPLE.some(matches))
+    throw new ApiError(
+      422,
+      "This store has no sample data in the prototype yet. Try one of the sample links.",
+    );
+  throw new ApiError(422, "We don't support this store yet.");
+}
+
+const NEW_PROFILE = {
+  unit: "cm",
+  size_system: null,
+  quick_sizes: {},
+  measurements: [],
+  brands: [],
+} satisfies Partial<Profile>;
+
+function assertUsable(
+  mode: Profile["fit_mode"],
+  quickSizes: Profile["quick_sizes"],
+  measurements: ProfileMeasurement[],
+): void {
+  if (mode === "quick_fit" && !Object.keys(quickSizes).length)
+    throw new ApiError(422, "Pick a size for at least one category.");
+  if (mode === "personal_fit" && !measurements.length)
+    throw new ApiError(422, "Add at least one measurement.");
+}
+
+function mergedProfile(p: ProfileIn, stored: Profile | null): Profile {
+  const base = stored ?? NEW_PROFILE;
+  const mode = p.fit_mode ?? "personal_fit";
+  const measurements = oldBodyMeasurements(p) ?? base.measurements;
+  const quick_sizes = p.quick_sizes ?? base.quick_sizes;
+  assertUsable(mode, quick_sizes, measurements);
+  return {
+    unit: p.unit ?? base.unit,
+    fit_mode: mode,
+    size_system: p.size_system ?? base.size_system,
+    quick_sizes,
+    measurements,
+    waist: displayValue(measurements, "waist"),
+    inseam: displayValue(measurements, "inseam"),
+    hips: displayValue(measurements, "hips"),
+    brands: brandsFor(p, base.brands),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+/** Like the backend: the older body always replaced brands; the current one keeps them if left out. */
+function brandsFor(p: ProfileIn, saved: Brand[]): Brand[] {
+  const ids = p.fit_mode ? p.brand_ids : (p.brand_ids ?? []);
+  if (!ids) return saved;
+  const wanted = new Set(ids);
+  return BRANDS.filter((b) => wanted.has(b.id));
+}
+
+function priceOf(result: CheckView): {
+  total_cents: number | null;
+  currency: string | null;
+} {
+  if (result.demo)
+    return {
+      total_cents: result.demo.price_cents,
+      currency: result.demo.currency,
+    };
+  const first = result.options[0];
+  return {
+    total_cents: first?.total_cents ?? null,
+    currency: first?.price_check.currency ?? null,
+  };
+}
+
 /** A failing sample (e.g. "store blocks us") never reaches the verdict, like the real pipeline. */
 function scenarioPlan(check: StoredCheck): StepPlan {
   const scenario = SCENARIOS[check.scenario];
@@ -177,7 +265,17 @@ function scenarioPlan(check: StoredCheck): StepPlan {
         url: check.url,
         createdAt: check.createdAt,
       });
-  const options = result?.options ?? [];
+  return {
+    result,
+    failure: scenario.failure,
+    details: scenarioDetails(scenario, result?.options ?? []),
+  };
+}
+
+function scenarioDetails(
+  scenario: Scenario,
+  options: OptionOut[],
+): Record<StepId, string> {
   const best = options.length
     ? Math.min(...options.map((o) => o.total_cents))
     : 0;
@@ -187,22 +285,17 @@ function scenarioPlan(check: StoredCheck): StepPlan {
       .filter((r) => r.garment_cm != null)
       .map((r) => r.dimension) ?? [];
   return {
-    name: scenario.product.name,
-    result,
-    failure: scenario.failure,
-    details: {
-      product: [
-        scenario.product.name,
-        String(scenario.product.attributes.wash ?? "").toLowerCase(),
-      ]
-        .filter(Boolean)
-        .join(", "),
-      prices: `${fmtMoney(best)} total across ${n} seller${n === 1 ? "" : "s"}`,
-      fit: compared.length
-        ? `${joinList(compared).replace(/^./, (c) => c.toUpperCase())} compared`
-        : "No comparable size data",
-      seller: "Reviews and return policy checked",
-    },
+    product: [
+      scenario.product.name,
+      String(scenario.product.attributes.wash ?? "").toLowerCase(),
+    ]
+      .filter(Boolean)
+      .join(", "),
+    prices: `${fmtMoney(best)} total across ${n} seller${n === 1 ? "" : "s"}`,
+    fit: compared.length
+      ? `${joinList(compared).replace(/^./, (c) => c.toUpperCase())} compared`
+      : "No comparable size data",
+    seller: "Reviews and return policy checked",
   };
 }
 
@@ -214,7 +307,6 @@ function demoPlan(
 ): StepPlan {
   const demo = buildDemoCheck(product, profile);
   return {
-    name: product.name,
     details: {
       product: `${product.name}, ${demo.shop_name} (demo shop)`,
       prices: `${fmtMoney(demo.price_cents, demo.currency)} before shipping`,
@@ -270,31 +362,7 @@ export class MockApiClient implements ApiClient {
 
   async saveProfile(p: ProfileIn): Promise<void> {
     await delay(250);
-    const stored = storedProfile();
-    const mode = p.fit_mode ?? "personal_fit";
-    const measurements = oldBodyMeasurements(p) ?? stored?.measurements ?? [];
-    const quick_sizes = p.quick_sizes ?? stored?.quick_sizes ?? {};
-    if (mode === "quick_fit" && !Object.keys(quick_sizes).length)
-      throw new ApiError(422, "Pick a size for at least one category.");
-    if (mode === "personal_fit" && !measurements.length)
-      throw new ApiError(422, "Add at least one measurement.");
-    // Like the backend: the older body always replaced brands; the current one keeps them if left out.
-    const ids = p.fit_mode ? p.brand_ids : (p.brand_ids ?? []);
-    const profile: Profile = {
-      unit: p.unit ?? stored?.unit ?? "cm",
-      fit_mode: mode,
-      size_system: p.size_system ?? stored?.size_system ?? null,
-      quick_sizes,
-      measurements,
-      waist: displayValue(measurements, "waist"),
-      inseam: displayValue(measurements, "inseam"),
-      hips: displayValue(measurements, "hips"),
-      brands: ids
-        ? BRANDS.filter((b) => new Set(ids).has(b.id))
-        : (stored?.brands ?? []),
-      updated_at: new Date().toISOString(),
-    };
-    write(KEYS.profile, profile);
+    write(KEYS.profile, mergedProfile(p, storedProfile()));
   }
 
   async searchBrands(query?: string, limit = 20) {
@@ -334,46 +402,22 @@ export class MockApiClient implements ApiClient {
     options: { shopId?: string } = {},
   ): Promise<{ id: string }> {
     await delay(200);
-    const host = hostOf(url);
-    if (!/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(host))
-      throw new ApiError(422, "That doesn't look like a product link.");
-    const shop = shopForUrl(url);
-    const demoProduct = demoProductForUrl(url);
-    const store = Object.keys(MOCK_STORES).find(
-      (d) => host === d || host.endsWith(`.${d}`),
-    );
-    if (shop?.id === DEFAULT_SHOP.id && !demoProduct)
-      throw new ApiError(
-        422,
-        "This page has no sample data in the prototype. Try one of the sample products.",
-      );
-    if (!store && !demoProduct) {
-      if (
-        KNOWN_WITHOUT_SAMPLE.some((d) => host === d || host.endsWith(`.${d}`))
-      )
-        throw new ApiError(
-          422,
-          "This store has no sample data in the prototype yet. Try one of the sample links.",
-        );
-      throw new ApiError(422, "We don't support this store yet.");
-    }
+    const target = checkTarget(url);
     const profile = storedProfile();
     if (!hasFitData(profile)) {
       throw new ApiError(409, "Save your measurements first.");
     }
-
     return this.startRun({
       id: crypto.randomUUID(),
       url,
-      scenario: store ? MOCK_STORES[store] : "",
+      scenario: target.store ? MOCK_STORES[target.store] : "",
       createdAt: new Date().toISOString(),
       status: "running",
       error: null,
       profile: { unit: profile.unit, cm: checkMeasurementsCm(profile) },
       result: null,
-      shopId: options.shopId ?? shop?.id,
-      demoProductId: demoProduct?.id,
-      demoProfile: demoProduct ? profile : undefined,
+      shopId: options.shopId ?? shopForUrl(url)?.id,
+      demoProfile: target.demoProduct ? profile : undefined,
     });
   }
 
@@ -513,14 +557,7 @@ export class MockApiClient implements ApiClient {
         image_url: c.result!.product?.image_url ?? null,
         verdict: c.result!.verdict,
         selected_size: c.result!.selected_size,
-        total_cents:
-          c.result!.demo?.price_cents ??
-          c.result!.options[0]?.total_cents ??
-          null,
-        currency:
-          c.result!.demo?.currency ??
-          c.result!.options[0]?.price_check.currency ??
-          null,
+        ...priceOf(c.result!),
       }));
   }
 

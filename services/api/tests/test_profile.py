@@ -78,8 +78,13 @@ async def test_unit_mixup_message_points_at_toggle(client, auth):
     assert "Check the unit (IN / cm)" in resp.text
 
 
-async def test_required_measurements(client, auth):
-    resp = await client.put("/v1/profile", json={"unit": "in", "waist": 26}, headers=auth)
+@pytest.mark.parametrize(
+    "body",
+    [{"unit": "in", "waist": 26}, {"unit": "in", "inseam": 30}, {"waist": 26, "inseam": 30}],
+    ids=["no-inseam", "no-waist", "no-unit"],
+)
+async def test_the_older_body_still_requires_unit_waist_and_inseam(client, auth, body):
+    resp = await client.put("/v1/profile", json=body, headers=auth)
     assert resp.status_code == 422
 
 

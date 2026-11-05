@@ -51,13 +51,15 @@ export function shopForUrl(url: string): Shop | undefined {
   );
 }
 
+/** The shop with this id, only if it can be selected right now. */
+export function activeShop(id: string | null): Shop | undefined {
+  return SHOPS.find((s) => s.id === id && s.status === "active");
+}
+
 /** The remembered shop. An unavailable or unknown value falls back to the default. */
 export function readSelectedShop(): Shop {
   try {
-    const id = window.localStorage.getItem(STORAGE_KEY);
-    return (
-      SHOPS.find((s) => s.id === id && s.status === "active") ?? DEFAULT_SHOP
-    );
+    return activeShop(window.localStorage.getItem(STORAGE_KEY)) ?? DEFAULT_SHOP;
   } catch {
     return DEFAULT_SHOP; // no browser storage: server rendering or private mode
   }

@@ -158,6 +158,56 @@ const PERSONAL: ProfileIn = {
   ],
 };
 
+describe("MockApiClient stored samples", () => {
+  it("reports a store that blocks us as a failed check", async () => {
+    useStorage();
+    const api = new MockApiClient();
+    await settle(
+      api.saveProfile({ fit_mode: "quick_fit", quick_sizes: { tops: "S" } }),
+    );
+    const { id } = await settle(
+      api.createCheck("https://www.agolde.com/products/90s-pinch-waist"),
+    );
+    await vi.runAllTimersAsync();
+    const result = await settle(api.getCheck(id));
+    expect(result?.status).toBe("failed");
+    expect(result?.error).toContain("blocked");
+  });
+
+  it("compares body measurements saved in Personal Fit", async () => {
+    useStorage();
+    const api = new MockApiClient();
+    await settle(
+      api.saveProfile({ unit: "in", waist: 26, inseam: 30, hips: 36 }),
+    );
+    const { id } = await settle(api.createCheck("https://www.levi.com/p/501"));
+    await vi.runAllTimersAsync();
+    const result = await settle(api.getCheck(id));
+    expect(result?.options[0].fit_check.rows.map((r) => r.dimension)).toEqual([
+      "waist",
+      "inseam",
+      "hips",
+    ]);
+    expect((await settle(api.recentChecks(1)))[0].verdict).toBe(result?.verdict);
+  });
+
+  it("explains a store without sample data", async () => {
+    useStorage();
+    await expectRejection(
+      new MockApiClient().createCheck("https://www.everlane.com/p/1"),
+      { status: 422 },
+    );
+  });
+
+  it("does not support an unknown store", async () => {
+    useStorage();
+    await expectRejection(
+      new MockApiClient().createCheck("https://elsewhere.test/p/1"),
+      { status: 422, message: "We don't support this store yet." },
+    );
+  });
+});
+
 describe("MockApiClient fit modes", () => {
   it("keeps Tops and Bottoms sizes separate", async () => {
     useStorage();
