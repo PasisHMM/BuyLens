@@ -29,7 +29,7 @@ select r.id, r.status, r.current_step, r.input_url, r.created_at, r.completed_at
 """
 
 _GET_OPTIONS = """
-select o.rank, o.total_cents, o.summary, o.price_check, o.fit_check, o.seller_risk,
+select o.rank, o.listing_id, o.total_cents, o.summary, o.price_check, o.fit_check, o.seller_risk,
        l.url, s.name as seller_name, s.domain
   from check_options o
   join listings l on l.id = o.listing_id
@@ -161,6 +161,7 @@ def _result(run: Any, options: list[Any]) -> CheckResult:
         options=[
             OptionOut(
                 rank=o["rank"],
+                listing_id=o["listing_id"],
                 seller=SellerOut(name=o["seller_name"], domain=o["domain"]),
                 url=o["url"],
                 total_cents=o["total_cents"],

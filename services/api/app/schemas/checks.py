@@ -39,6 +39,7 @@ class SellerOut(BaseModel):
 
 class OptionOut(BaseModel):
     rank: int
+    listing_id: UUID  # the stable offer identifier; seller.domain identifies the retailer
     seller: SellerOut
     url: str
     total_cents: int

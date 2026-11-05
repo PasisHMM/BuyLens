@@ -281,6 +281,9 @@ class ProfileSnapshot(BaseModel):
     unit: Literal["in", "cm"]
     measurements_cm: dict[str, float]
     brand_ids: list[UUID] = Field(default_factory=list)
+    # Defaults keep runs queued before Quick Fit existed valid.
+    fit_mode: FitMode = FitMode.PERSONAL_FIT
+    quick_sizes: dict[FitCategory, QuickSize] = Field(default_factory=dict)
 
 
 class SizeChoice(BaseModel):

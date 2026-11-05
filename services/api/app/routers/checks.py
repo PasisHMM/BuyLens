@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 from app.auth import CurrentUser, current_user
 from app.config import Settings
 from app.db import Database, get_db
+from app.pipeline.fit_profile import body_measurements_cm
 from app.pipeline.models import ProfileSnapshot
 from app.pipeline.progress import TERMINAL, EventBus, ProgressEvent
 from app.pipeline.urls import InvalidProductUrl, normalize_url, seller_domain_for
@@ -68,7 +69,7 @@ async def create_check(
         raise HTTPException(422, detail="We don't support this store yet.")
 
     profile = await profiles.get(user.id)
-    if profile is None or not profile.measurements_cm:
+    if profile is None or not (profile.fit.quick_sizes or profile.fit.measurements):
         raise HTTPException(status.HTTP_409_CONFLICT, detail="Save your measurements first.")
     if not await limiter.hit(f"checks:{user.id}", CHECKS_PER_WINDOW, WINDOW_S):
         raise HTTPException(
@@ -81,8 +82,10 @@ async def create_check(
 
     snapshot = ProfileSnapshot(
         unit=profile.unit.value,
-        measurements_cm=profile.measurements_cm,
+        measurements_cm=body_measurements_cm(profile.fit),
         brand_ids=[b.id for b in profile.brands],
+        fit_mode=profile.fit.mode,
+        quick_sizes=dict(profile.fit.quick_sizes),
     )
     run_id = await repo.create_run(
         user.id,

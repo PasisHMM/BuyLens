@@ -221,3 +221,30 @@ async def test_recent_checks(client, checks, user):
     await client.post("/v1/checks", json={"url": PRODUCT_URL}, headers=auth)
     resp = await client.get("/v1/checks", params={"limit": 5}, headers=auth)
     assert resp.status_code == 200 and len(resp.json()) == 1
+
+
+async def test_quick_fit_profile_with_only_a_bottoms_size_starts_a_check(client, checks, user):
+    repo, queue, _ = checks
+    _, auth = user
+    quick = {"fit_mode": "quick_fit", "quick_sizes": {"bottoms": "M"}}
+    assert (await client.put("/v1/profile", json=quick, headers=auth)).status_code == 204
+
+    resp = await client.post("/v1/checks", json={"url": PRODUCT_URL}, headers=auth)
+    assert resp.status_code == 202
+    run_id = UUID(resp.json()["id"])
+    assert queue.jobs == [run_id]
+    snapshot = repo.runs[run_id]["profile"]
+    assert snapshot.fit_mode == "quick_fit"
+    assert snapshot.quick_sizes == {"bottoms": "M"}
+    assert snapshot.measurements_cm == {}
+
+
+async def test_quick_fit_check_keeps_saved_measurements_out_of_the_comparison(client, checks, user):
+    repo, _, _ = checks
+    _, auth = user
+    await with_profile(client, auth)
+    quick = {"fit_mode": "quick_fit", "quick_sizes": {"tops": "S"}}
+    await client.put("/v1/profile", json=quick, headers=auth)
+
+    resp = await client.post("/v1/checks", json={"url": PRODUCT_URL}, headers=auth)
+    assert repo.runs[UUID(resp.json()["id"])]["profile"].measurements_cm == {}

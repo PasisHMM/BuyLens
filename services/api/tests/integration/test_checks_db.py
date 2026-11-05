@@ -96,6 +96,7 @@ async def test_full_check_round_trip(db, test_seller):
     assert result.why_not is not None and result.why_not.buy
     assert len(result.options) == 1
     option = result.options[0]
+    assert isinstance(option.listing_id, UUID)  # the stable offer identifier reaches the API
     assert option.seller.domain == test_seller
     assert option.seller_risk.is_official and option.seller_risk.level == "low"
     assert [r.dimension for r in option.fit_check.rows] == ["waist", "inseam", "hips"]

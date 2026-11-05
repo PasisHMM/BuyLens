@@ -6,7 +6,7 @@ from uuid import uuid4
 import pytest
 
 from app.pipeline.cache import MemoryCache
-from app.pipeline.models import ReturnPolicy, Verdict
+from app.pipeline.models import ProfileSnapshot, ReturnPolicy, Verdict
 from app.pipeline.narrate import LLMCopy
 from app.pipeline.progress import MemoryEventBus
 from app.pipeline.run_check import PipelineDeps, run_check
@@ -174,3 +174,25 @@ async def test_unsupported_store_fails(host):
     run_id = store.add_run(host)
     await run_check(deps, run_id)
     assert store.runs[run_id]["error"] == "We don't support this store yet."
+
+
+async def test_quick_fit_check_finishes_with_not_enough_fit_data():
+    deps, store, _, _ = world()
+    store.profile = ProfileSnapshot(
+        unit="cm", measurements_cm={}, fit_mode="quick_fit", quick_sizes={"bottoms": "M"}
+    )
+    run_id = store.add_run(BRAND_URL)
+
+    await run_check(deps, run_id)
+
+    run = store.runs[run_id]
+    assert run["status"] == "done", run.get("error")
+    fit = run["options"][0].fit
+    assert fit.rows == []
+    assert fit.confidence == "limited"
+
+
+def test_a_snapshot_stored_before_quick_fit_still_loads_as_personal_fit():
+    old = ProfileSnapshot.model_validate({"unit": "in", "measurements_cm": {"waist": 66.0}})
+    assert old.fit_mode == "personal_fit"
+    assert old.quick_sizes == {}
