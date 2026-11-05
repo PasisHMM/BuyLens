@@ -1,6 +1,6 @@
 # Buy Lens Redesign Plan
 
-> **Status:** decisions locked 2026-10-29; MVP decisions added the same day (§2.9–2.13, §5, §6c, §8, §9). Final MVP decisions applied: inclusive size boundaries, German stores, free sources only, Quick Fit sizes per category, **no market percentages**, **firsthand retail only**. Phase 0 and Phase 1 done. Phase 0, Phase 1 and Phase 2 done (results in §9.7). **Development is now mock-first** (§11, decided 2026-11-05): the next goal is the prototype milestone. Next step: Phase 3 (fit analysis). Phase 9 (admin panel) stays planned post-MVP work (§10).
+> **Status:** decisions locked 2026-10-29; MVP decisions added the same day (§2.9–2.13, §5, §6c, §8, §9). Final MVP decisions applied: inclusive size boundaries, German stores, free sources only, Quick Fit sizes per category, **no market percentages**, **firsthand retail only**. Phase 0 and Phase 1 done. Phase 0 to Phase 3 done (Phase 3 results in §12). **Development is now mock-first** (§11, decided 2026-11-05): the next goal is the prototype milestone. **The fit rules were revised on 2026-11-05 (§2.1–2.3); these supersede earlier ones.** Next step: Phase 4. Phase 9 (admin panel) stays planned post-MVP work (§10).
 > **Direction:** Buy Lens is a user-controlled, evidence-based clothing shopping analysis tool. It helps people decide; it never decides for them.
 
 ---
@@ -24,17 +24,20 @@ What stays: extraction, fetching, the AI provider layer, sign-in and database ac
 
 ### 2.1 Critical measurements and tolerances
 
-| Category | Critical (outside tolerance → MISMATCH) | Secondary (missing or off → UNCERTAIN only) | Tolerance |
-|---|---|---|---|
-| Jeans / pants | Waist, hips | Inseam | ±2 cm against a body chart, ±1 cm against a garment chart |
-| Tops / T-shirts / sweaters | Chest / bust, shoulders | Waist | ±2 cm |
-| Dresses | Bust, waist, hips | None | ±2 cm |
-| Outerwear / coats | Chest, shoulders | None | ±3 cm (room for layers) |
+**Priority measurements (revised 2026-11-05): waist, hips and shoulders.** Each category uses the ones that apply to it. Quick Fit compares only these.
 
-Signed off by product; values may be tuned later from feedback. These values live in **one table** in `pipeline/measurements.py`.
+| Category | Critical (verified outside the range → MISMATCH) | Of these, used by Quick Fit | Secondary (off → UNCERTAIN only) | Tolerance |
+|---|---|---|---|---|
+| Jeans / pants | Waist, hips | Waist, hips | Inseam | ±2 cm against a body chart, ±1 cm against a garment chart |
+| Tops / sweaters / hoodies | Chest / bust, shoulders | Shoulders | Waist, sleeve | ±2 cm |
+| Dresses | Bust, waist, hips | Waist, hips | None | ±2 cm |
+| Outerwear / coats | Chest, shoulders | Shoulders | Sleeve | ±3 cm (room for layers) |
 
-> **Note:** Tops were corrected on 2026-10-29: chest/bust and shoulders are critical, waist is secondary.
-> Shorts and skirts have no agreed rules yet, so they get no fit rules (fit result UNCERTAIN).
+These values live in **one table** in `pipeline/measurements.py`.
+
+> **Chest was reviewed, not removed.** It stays critical in Personal Fit for tops, dresses and outerwear, because a top can fail at the chest. It isn't in the priority group, so Quick Fit doesn't use it.
+> **Sleeve is new as a secondary measurement,** following the revised rule that names it. **Tolerances are unchanged.**
+> Shorts, skirts and hats have no agreed rules, so they get no fit rules (fit result UNCERTAIN).
 
 ### 2.2 Profile modes
 
@@ -44,9 +47,16 @@ Signed off by product; values may be tuned later from feedback. These values liv
 - **Size boundaries are inclusive:** a published range 66–70 cm includes 66 and 70. If two officially sourced ranges overlap, a boundary value may match both sizes. Overlaps are never invented.
 - Sizes map to body ranges using this **source priority**: (1) the product's own size chart, (2) the brand's official size chart, (3) a documented general reference, used only as an approximate fallback. Every stored row records its source; see §6c.
 - Quick Fit is always labelled approximate. It is never treated like exact body measurements.
-- **Never returns MISMATCH.**
-  - Returns **MATCH**, labelled "Approximate fit based on size M", when the store's chart covers that size.
-  - Returns **UNCERTAIN** when the chart doesn't cover the size, or there's no chart.
+- **Never derives a number for the person.** It compares published ranges with each other.
+- **MATCH**, labelled "Approximate fit based on size M": the product is listed in the chosen size, the chart publishes every priority measurement for it, and that size doesn't overlap a neighbour beyond a touching end. Touching ends don't matter here: with no exact measurement, nothing places the person on that line.
+- **UNCERTAIN:** a priority measurement isn't published, the size overlaps a neighbour, the chart doesn't describe the size or the product's sizes, or the size isn't listed but a listed size might fit.
+- **MISMATCH only with this proof (revised 2026-11-05; the earlier "never" no longer applies).** All of these must hold:
+  1. The product isn't listed in the chosen size.
+  2. The chart publishes a range for that size in a priority measurement of the category.
+  3. Every listed size publishes a range for that same measurement.
+  4. The chosen size's range is more than the approved tolerance away from **every** listed size's range.
+
+  Whatever the person measures within their size's range, no listed size can then fit. Anything less is UNCERTAIN. The proof assumes the person's body lies within the published range of the size they chose, which is why Quick Fit stays labelled approximate.
 
 **Personal Fit (exact measurements)**
 - Measurements are **body** or **garment** (measured from a piece that already fits), with an optional note naming the garment.
@@ -56,11 +66,34 @@ Signed off by product; values may be tuned later from feedback. These values liv
 **Switching** between Quick and Personal Fit keeps all checks, feedback, quick sizes and measurements. The mode is only a setting: switching never deletes the other mode's data. Each check records the mode it used.
 
 ### 2.3 Fit outcomes and ranking
-- **MATCH:** every critical measurement is within tolerance.
-- **UNCERTAIN:** a critical or secondary measurement is missing, the chart type is unknown, or the check ran in Quick Fit without chart coverage.
-- **MISMATCH:** a critical measurement is outside tolerance and the data supports it (Personal Fit only).
-- Results show MATCH options first, then UNCERTAIN in their own section. MISMATCH options are hidden behind **"3 options hidden due to critical measurement mismatches [View]"**.
-- Within each group, options are sorted by: within budget → lowest total cost (EUR) → reliability band. No market average or percentage takes part.
+
+Revised 2026-11-05. The logic is in `pipeline/fit_analysis.py`.
+
+**Personal Fit, in this order:**
+1. **No rules, no chart, or no listed size the chart describes → UNCERTAIN** with the reason.
+2. **Candidates:** every published size where all comparable critical measurements are inside their inclusive ranges. A measurement counts as comparable only when both values exist and have the same basis (body or garment).
+3. **A candidate that's on sale:**
+   - **More than one distinct candidate → UNCERTAIN.** This one rule covers a shared boundary and an overlap. Waist 70 with S 60–70 and M 70–80 fits both. Unsold sizes count, because the person may really need the unsold one. Length variants of one size aren't distinct.
+   - **One candidate:** a shared boundary isn't ambiguous if another critical measurement rules out the other size. Waist 70 on S/M with hips only in S is size S.
+   - **Then:** a missing or incomparable critical measurement, or a secondary measurement beyond tolerance → **UNCERTAIN**. Otherwise **MATCH**.
+4. **No candidate on sale:**
+   - Critical measurements outside the range but within tolerance on some listed size → **UNCERTAIN** (never MATCH, because MATCH requires being inside).
+   - **Every listed size has a critical measurement beyond tolerance → MISMATCH.** The reason names the dimension, the value and the closest size's range. This outranks missing and secondary data.
+   - Otherwise **UNCERTAIN**: a listed size has nothing to compare, so nothing is proven.
+
+**Reconciled details:**
+- A **missing secondary** measurement no longer blocks MATCH, because the revised rule is "no *known* additional measurement creates a concern". It's reported as "Not checked: inseam". This changes the earlier rule in docs/glossary.md.
+- **Body and garment values are never compared.** There's no approved conversion, so a mismatch in basis counts as missing.
+- A chart with **single values** rather than ranges has no range to be inside, so the approved tolerance acts as its range, and the nearest size is used. A value exactly between two sizes is UNCERTAIN.
+- **Stretch:** the existing 2.54 cm allowance applies only to garment circumferences, on the tight side, with known fabric. It can turn a mismatch into UNCERTAIN and can't create a MATCH.
+- **Exact arithmetic:** ranges and tolerances use decimals, so 66.1 − 2.0 is exactly 64.1.
+- **Feedback adjustments (`fit_memory`) aren't applied,** because nothing writes them yet. They return with the feedback work in Phase 7.
+
+**Results:**
+- **MATCH (green):** visible, listed first.
+- **UNCERTAIN (yellow):** visible in its own section, marked as needing attention.
+- **MISMATCH (red):** stays in storage, leaves the visible results, and appears only in **"3 options hidden due to critical measurement mismatches [View]"**, with its reason and no way to buy it.
+- Within each group: lowest total cost, then seller level as a tie-break. The budget joins in Phase 4. No market average or percentage takes part.
 - **No fit percentages or probabilities anywhere.**
 
 ### 2.4 Budget
@@ -222,8 +255,8 @@ Every unit follows the same rules:
 | **0 Stabilise** ✅ | Worker allow-list race; Vitest + first web tests; CRAP baseline with coverage | Concurrent refresh keeps hosts allowed; formatting; mock-client storage | Done: see §6 |
 | **1 Measurement model** ✅ | `pipeline/measurements.py` (table in §2.1, size references with sources), fit-mode / outcome / basis enums, Migration A (profile part), `docs/glossary.md` | Critical and secondary sets per category; tolerance by chart basis; unknown dimension/category rejected where data enters; every size reference has a source | Only one definition of the catalog exists |
 | **2 Profiles + homepage form** ✅ | See **§9** for the exact execution plan. Boundary tests; profile API with Quick Fit sizes per category and Personal Fit measurements; no data loss on mode switch; `GET /v1/measurements`; Quick Fit users can start a check; homepage form (link, mode, Tops/Bottoms sizes, Analyze); `MeasurementsForm` reads the catalog; component-test setup | See §9 | A first-time user picks "S" for Tops and "M" for Bottoms and starts a check, with no `/preferences` detour. **Not in Phase 2:** taxonomy, budget, results screen, currency, fit logic |
-| **3 Fit analysis v2 + product types** | `fitting.py` replaced (size choice and length variants reused); `sizechart.py` aliases (pin current behaviour, then split `parse_table`); `taxonomy.py` **product types and type → fit category only** (§2.9); the check uses the quick size of the product's fit category; `check_runs.fit_mode_used`; `size_references` gains brand, source URL, retrieval date, basis and source kind, plus EU and W/L labels; brand charts only from free official pages (§2.13) | Jeans MATCH / UNCERTAIN (hips missing) / MISMATCH (waist); body vs garment tolerance; Quick Fit never MISMATCH; Tops size used for a sweater and Bottoms size for jeans; missing category size → UNCERTAIN; stretch only with fabric content; inseam missing → UNCERTAIN; skirts, shorts and hats → UNCERTAIN with a reason; product chart beats brand chart | Deterministic; no percentages; every reference row has URL, date and basis |
-| **4 Results without verdicts + EUR + budget** | `ranking.py`; delete `rules.decide` and `narrate.py`; new results contract; results screen (match / uncertain / hidden note); **remove market average and percentages** (`pricing.market_average`, `PriceCheck.market_avg_cents/delta_cents/delta_pct/comparable_count`, the price card line); **currency fix** (unknown ≠ USD; "not directly comparable to EUR"; EUR formatting); **budget in €** on the homepage and in ranking; delete `mock/engine.ts`; fixtures from Python; `live.ts` duplicate; check responses where they enter the web app (OpenAPI types plus hand-written guards, no new library); idempotency key | MATCH ranks above a cheaper UNCERTAIN option; mismatches counted and hidden; no `verdict` key; **no market or percentage field in the contract**; missing currency stays unknown; a USD listing is labelled and left out of the budget check; over-budget flag; malformed responses rejected; double submit makes one check | No BUY / CONSIDER / SKIP and no market % in active code; dryer clean |
+| **3 Fit analysis v2 + product types** ✅ (see §12; two DB items moved) | `fitting.py` replaced (size choice and length variants reused); `sizechart.py` aliases (pin current behaviour, then split `parse_table`); `taxonomy.py` **product types and type → fit category only** (§2.9); the check uses the quick size of the product's fit category; `check_runs.fit_mode_used`; `size_references` gains brand, source URL, retrieval date, basis and source kind, plus EU and W/L labels; brand charts only from free official pages (§2.13) | Jeans MATCH / UNCERTAIN (hips missing) / MISMATCH (waist); body vs garment tolerance; Quick Fit never MISMATCH; Tops size used for a sweater and Bottoms size for jeans; missing category size → UNCERTAIN; stretch only with fabric content; inseam missing → UNCERTAIN; skirts, shorts and hats → UNCERTAIN with a reason; product chart beats brand chart | Deterministic; no percentages; every reference row has URL, date and basis |
+| **4 EUR + budget** (verdict removal, the new results screen and Python fixtures were done early in Phase 3 by decision; see §12) | **Currency fix** (unknown ≠ USD; "not directly comparable to EUR"; EUR formatting); **budget in €** on the homepage and in ranking; `check_runs.fit_mode_used`; `live.ts` duplicate; check responses where they enter the web app (OpenAPI types plus hand-written guards, no new library); idempotency key | MATCH ranks above a cheaper UNCERTAIN option; mismatches counted and hidden; no `verdict` key; **no market or percentage field in the contract**; missing currency stays unknown; a USD listing is labelled and left out of the budget check; over-budget flag; malformed responses rejected; double submit makes one check | No BUY / CONSIDER / SKIP and no market % in active code; dryer clean |
 | **5 Reliability + evidence + attributes** | `reliability.py`, `evidence_summary.py`; attribute extraction with the controlled vocabulary (§2.9), shown as plain facts | Fewer than 5 reviews → Not enough data; fixed tags → expected band; tag with an unverifiable quote dropped; attribute outside the vocabulary → "not stated"; an attribute never changes the fit result | Every input and source is visible |
 | ~~**6 Secondhand**~~ | **Postponed until after the MVP** (§2.5). No work planned. | — | — |
 | **7 Feedback on the server** | Feedback endpoint, `fit_memory` adjustment shown to the user | Saving twice changes nothing; adjustment capped; feedback survives a mode switch | Feedback is no longer browser-only |
@@ -239,6 +272,9 @@ Every unit follows the same rules:
 **Essential for the live product:** Phases 2–4 (Quick/Personal Fit, fit results for jeans, pants and tops, EUR prices, budget, no verdicts), plus the reliability band from Phase 5, **and at least one EU store whose product pages we may read** (§2.12, risk R1). This requirement is unchanged; it no longer blocks the prototype milestone.
 
 **Valuable but deferrable inside the MVP:** attributes (Phase 5), server-side feedback (Phase 7).
+
+**Deferred task (near the end of the roadmap, after Phase 8; not started):**
+- Review and improve the user-facing size-system selector (EU/US and potentially additional regional systems), including conversion and category-specific labels.
 
 **Intentionally postponed (not in the MVP):**
 - secondhand, including Vinted, Kleinanzeigen, resale discovery and marketplace reliability;
@@ -362,6 +398,8 @@ We will not fake a browser identity, use a headless browser to get past blocks, 
 ## 8. Frontend component map (verified 2026-10-29)
 
 Rules stay in Python; every component only displays what the API returns. "Phase" is when the change lands.
+
+> The map below predates Phase 3. `DemoResultView`, `mock/engine.ts` and `mock/scenarios.ts` are gone, and verdict UI is removed (§12).
 
 | Component | Responsibility today | Decision | Required changes | Depends on | Tests to add | Phase |
 |---|---|---|---|---|---|---|
@@ -724,25 +762,29 @@ A link from another shop is stopped in the browser, before any save or check. Th
 - Ranges are inclusive, so a shared boundary belongs to both sizes.
 - Shoulders and inseam aren't in the chart and are never invented.
 
-**Fit results:**
+**Fit results (engine in §2.3; every outcome is generated by Python):**
 
 | Case | Result |
 |---|---|
-| Quick Fit, product listed in the chosen size, chart has that size | MATCH, labelled approximate |
+| Quick Fit, Bottoms, product listed in the chosen size | MATCH, labelled approximate |
+| Quick Fit, Tops | UNCERTAIN: shoulders are the priority measurement and aren't in the chart |
 | Quick Fit, no size for the product's category | UNCERTAIN ("Add your Bottoms size.") |
 | Quick Fit, product sold in waist/length sizes | UNCERTAIN: no mapping is invented |
-| Any Quick Fit case | Never MISMATCH |
-| Personal Fit, Tops | At best UNCERTAIN: shoulders are critical and not in the chart |
-| Personal Fit, Bottoms | At best UNCERTAIN: inseam is secondary and not in the chart |
+| Quick Fit, Demo Petite Trousers (XXS, XS) with S | UNCERTAIN: S touches XS |
+| Quick Fit, Demo Petite Trousers with M, L or XL | MISMATCH: the waist gap is beyond the tolerance |
+| Personal Fit, Bottoms, inside one size | MATCH: inseam reported as not checked |
+| Personal Fit, on a shared boundary | UNCERTAIN |
+| Personal Fit, above every listed size | MISMATCH |
+| Personal Fit, Tops | At best UNCERTAIN: shoulders are critical and not in the chart. MISMATCH if chest is beyond every listed size |
 | Personal Fit, garment measurements | Not compared with a body chart: UNCERTAIN |
 
-**Scope limit:** the Quick Fit outcomes are generated by Python and read from the fixture. `personal_fit()` exists and is tested in Python with the signed-off rules, but **the browser can't run it**, so the prototype always shows UNCERTAIN for Personal Fit and lists what the chart lacks. This small module stands apart from `fitting.py`; Phase 3's fit analysis should absorb it. A displayed chart alone is not a verified fit result.
+**Personal Fit in the browser:** the browser can't run Python. So the fixture holds Python's result for three **sample measurements**, offered on the homepage, which demonstrate MATCH, UNCERTAIN and MISMATCH and save nothing. For someone's **own** measurements, the prototype shows UNCERTAIN and says why. A live backend would give their real result. No rule is copied to TypeScript.
 
-**Demo products:** two fictional products with no real page, plus Levi's baggy jeans, a real page on the owner's SumUp test store. Prices are sample data.
+**Demo products:** three fictional products with no real page, plus Levi's baggy jeans, a real page on the owner's SumUp test store. Prices are sample data.
 
 ### 11.4 Results for demo products
 
-A demo check shows Fit, Price and Seller Reliability findings: no verdict, no market figures, and "Shipping cost unverified" and "Not enough data" where data is missing. The older results screen, with verdicts, stays until Phase 4 for live mode and older stored checks.
+Demo checks use the same response shape and the same results screen as live checks (§2.3): Fit, Price and Seller Reliability findings, with "Shipping cost unverified" and "Not enough data" where data is missing.
 
 ### 11.5 Direct product links
 
@@ -760,8 +802,27 @@ The results view has a **View product at retailer** action.
 
 | To | What |
 |---|---|
-| Phase 3 | Fit analysis replacing `fitting.py`, absorbing `demo_shop.py`'s logic; Personal Fit results in fixtures; product types |
-| Phase 4 | Budget field; verdicts and market figures off every screen, including the old homepage copy and results; Python fixtures replacing `mock/engine.ts` |
+| Phase 4 | Budget field, currency fix, `fit_mode_used` column |
 | Phase 9 | Admin panel, which needs a live backend (§10.4) |
 | Live-product milestone | Real stores, store access (R1), remote migrations, real shipping and seller data |
+
+---
+
+## 12. Phase 3 results (2026-11-05)
+
+**Full report:** [redesign-phase-3-report.md](redesign-phase-3-report.md).
+
+**Moved into Phase 3 by decision:** removing verdicts and market figures, and the new results contract and screen, which the roadmap had in Phase 4.
+
+**New local migration (not applied remotely):** `20261105000000_results_keep_all_options.sql`. It lifts the limit of 3 ranks, so every option stays in storage, and makes `check_options.score` nullable. Live mode needs it, along with the Phase 1 migration.
+
+**Moved from Phase 3:**
+
+| Item | To | Why |
+|---|---|---|
+| `check_runs.fit_mode_used` column | Phase 4 | The API reads the mode from the stored profile snapshot, so no column is needed yet |
+| `size_references` source columns and labels | Live-product milestone | The table is empty, and the demo chart stays apart from it |
+| Levi's DE brand chart | Live-product milestone | Real-store work is deferred (§11.1) |
+
+**Left for Migration B (Phase 8), unwritten until then:** `check_runs.verdict`, `headline`, `explanation` and `why_not`; `check_options.score`; the `verdict` and `skip_reason` enums; the `decision_memory` table.
 

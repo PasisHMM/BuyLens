@@ -1,6 +1,6 @@
 # Buy Lens
 
-Paste a clothing link and get a **BUY / CONSIDER / SKIP** verdict based on your exact measurements, the real total price, and seller risk.
+Paste a clothing link and see **Fit** (MATCH / UNCERTAIN / MISMATCH), the real total price, and seller reliability. Buy Lens shows the evidence; the decision stays yours.
 
 Full design and plan: [`../buy-lens-architecture-and-plan.md`](../buy-lens-architecture-and-plan.md)
 
@@ -8,12 +8,7 @@ Full design and plan: [`../buy-lens-architecture-and-plan.md`](../buy-lens-archi
 
 ## Status
 
-| Phase | Status | Report |
-|---|---|---|
-| 1. Foundation & setup | ✅ Done; CI green on GitHub | this README |
-| 2. Core analyzer engine | ✅ Built and unit-tested · ⏳ needs migration + Redis + Gemini key to run live | [`docs/phase-2-report.md`](docs/phase-2-report.md) |
-| 3. Frontend | Not started | |
-| 4. Feedback & memory loop | Not started (tables and memory reads are in place) | |
+**Mock-first prototype.** Current plan and status: [`docs/redesign-plan.md`](docs/redesign-plan.md). Latest report: [`docs/redesign-phase-3-report.md`](docs/redesign-phase-3-report.md).
 
 ---
 
@@ -21,14 +16,14 @@ Full design and plan: [`../buy-lens-architecture-and-plan.md`](../buy-lens-archi
 
 ```
 buy-lens/
-├── apps/web/                 # Next.js app (Phase 3; placeholder for now)
+├── apps/web/                 # Next.js app; display only, with a mock mode
 ├── services/api/             # FastAPI app + arq check worker
 │   ├── app/
 │   │   ├── main.py           # create_app(): CORS, routers, DB/Redis lifespan
 │   │   ├── worker.py         # arq WorkerSettings: runs the check pipeline
 │   │   ├── queue.py          # job queue + per-user rate limiter
 │   │   ├── llm/              # provider layer: Gemini (default), Anthropic
-│   │   ├── pipeline/         # extract → source → price → fit → seller risk → rules → copy
+│   │   ├── pipeline/         # extract → source → price → fit analysis → seller risk → ranking
 │   │   ├── config.py         # pydantic-settings (env vars / .env)
 │   │   ├── auth.py           # Supabase JWT verification (JWKS or legacy HS256)
 │   │   ├── db.py             # asyncpg pool; user_tx() runs queries under RLS
@@ -36,7 +31,7 @@ buy-lens/
 │   │   ├── log_config.py     # JSON logs; request bodies are never logged
 │   │   ├── schemas/          # Pydantic request/response models
 │   │   ├── repos/            # SQL access (Protocol + Postgres implementation)
-│   │   └── routers/          # /healthz, /v1/profile, /v1/brands, /v1/checks
+│   │   └── routers/          # /healthz, /v1/profile, /v1/brands, /v1/measurements, /v1/checks
 │   ├── tests/                # unit tests (in-memory repos) + integration/ (real Postgres)
 │   └── scripts/export_openapi.py
 ├── packages/contracts/openapi.json   # API contract for the web app's generated TS types
@@ -54,22 +49,27 @@ buy-lens/
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | `GET` | `/healthz` | — | Liveness |
-| `GET` | `/v1/profile` | Bearer | Returns the profile in the user's unit. Returns `404` if there's no profile yet, and the web app then routes to `/preferences` |
+| `GET` | `/v1/profile` | Bearer | Returns the profile in the user's unit. Returns `404` if there's no profile yet |
 | `PUT` | `/v1/profile` | Bearer | Saves measurements, unit and brands. Returns `204`, or `422` for invalid input |
 | `GET` | `/v1/brands?q=&limit=` | — | Brand search for the "+ Add brand" combobox |
-| `POST` | `/v1/checks` | Bearer | `{"url"}` → `202 {id, status}`. Returns `422` for an unsupported store or bad link, `409` with no saved measurements, `429` when rate-limited |
+| `GET` | `/v1/measurements` | — | The catalog: measurements, categories, product types, quick sizes |
+| `POST` | `/v1/checks` | Bearer | `{"url"}` → `202 {id, status}`. Returns `422` for an unsupported store or bad link, `409` with no saved sizes or measurements, `429` when rate-limited |
 | `GET` | `/v1/checks/{id}/events` | Bearer | Server-Sent Events for the loading modal (4 steps, then `complete` / `failed` / `cancelled`); supports `Last-Event-ID` |
-| `GET` | `/v1/checks/{id}` | Bearer | Full result: verdict, headline, explanation, why-not lines, up to 3 options with Price / Fit / Seller cards |
+| `GET` | `/v1/checks/{id}` | Bearer | Full result: `matches`, `uncertain`, `hidden_mismatches{count, reasons}`, `fit_mode_used`; each option has Price / Fit / Seller findings |
 | `GET` | `/v1/checks?limit=5` | Bearer | Recent checks ("A recent check" card) |
 | `DELETE` | `/v1/checks/{id}` | Bearer | Cancel a queued or running check |
 
-`PUT /v1/profile` body, matching the Preferences screen:
+`PUT /v1/profile` body, with only the sections to replace:
 
 ```json
-{ "unit": "in", "waist": 26, "inseam": 30, "hips": 36, "brand_ids": ["<uuid>", "<uuid>"] }
+{ "fit_mode": "quick_fit", "size_system": "eu", "quick_sizes": { "tops": "S", "bottoms": "M" } }
 ```
 
-- `hips` is optional. Sending `null` deletes a previously saved value.
+```json
+{ "fit_mode": "personal_fit", "unit": "cm", "measurements": [{ "dimension": "waist", "value": 70, "basis": "body" }] }
+```
+
+- The older `{ "unit", "waist", "inseam", "hips", "brand_ids" }` body still works and means Personal Fit.
 - Values are converted to cm and checked against plausible adult ranges. A unit mix-up (for example 26 sent with `"unit": "cm"`) returns `422` with "Check the unit (IN / cm)."
 - Unknown fields, unknown brand IDs, and more than 30 brands are rejected.
 
@@ -141,6 +141,12 @@ After changing any endpoint or schema, regenerate the API contract:
 
 ```bash
 uv run python scripts/export_openapi.py
+```
+
+After changing the catalog, the demo shop or a fit rule, regenerate the prototype's data:
+
+```bash
+uv run python scripts/export_catalog.py
 ```
 
 ---
